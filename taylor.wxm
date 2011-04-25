@@ -1,0 +1,32 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 0.8.6 ] */
+
+/* [wxMaxima: input   start ] */
+load(basic);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ntaylors(expresion, variable, entorno, n) := block([lista],
+lista:[expresion],
+for i : 0 thru n step 1 do lista:push(taylor(expresion, variable, entorno, i),lista),
+reverse(lista));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+exponenciales:ntaylors(%e^x, x, 0, 8);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d(exponenciales, [x, -2, 2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+senos:ntaylors(sin(x), x, 0, 10);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d(senos, [x, -%pi, %pi]);
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$

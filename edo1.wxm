@@ -1,0 +1,109 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 0.8.6 ] */
+
+/* [wxMaxima: input   start ] */
+ode2('diff(y, x)=2*x, y, x);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+load(dynamics);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk('diff(y, x)=2*x, y, 1, [x, -2, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk('diff(y, x)=2*x, y, 1, [x, 0, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk(['diff(y, x)=2*x], [y], [1], [x, 0, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+describe(rk);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk(y=2*x, y, 0, [x, 0, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk(2*x-y, y, 0, [x, 0, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk(2*x-y, y, 1, [x, 0, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk(2*x, y, 1, [x, 0, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+linearinterpol(rk(2*x, y, 1, [x, 0, 2, 0.1]));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([discrete, rk(2*x, y, 1, [x, 0, 2, 0.1])]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([discrete, rk(2*x, y, 1, [x, -2, 2, 0.1])]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+rk(2*x, y, 1, [x, -2, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([discrete, linearinterpol(rk(2*x, y, 1, [x, 0, 2, 0.1]))]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+linearinterpol(rk(2*x, y, 1, [x, 0, 2, 0.1]));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+linearinterpol(rk(2*x, y, 1, [x, 0, 2, 0.1])), numer;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+load(interpol);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+linearinterpol(rk(2*x, y, 1, [x, 0, 2, 0.1]));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d(linearinterpol(rk(2*x, y, 1, [x, 0, 2, 0.1])));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([linearinterpol(rk(2*x, y, 1, [x, 0, 2, 0.1])), [discrete, rk(2*x, y, 1, [x, 0, 2, 0.1])]], [x, 0, 2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+x3 : rk(x^2, y, 1, [x, 0, 2, 0.1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([linearinterpol(x3), [discrete, x3]], [x, 0, 2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+cspline(x3);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([cspline(x3), linearinterpol(x3), [discrete, x3]], [x, 0, 2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([cspline(x3), linearinterpol(x3), [discrete, x3]], [x, 0.2, 0.6], [y, 1, 1.1]);
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$

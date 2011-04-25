@@ -1,0 +1,283 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 0.8.6 ] */
+
+/* [wxMaxima: input   start ] */
+load(dynamics);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+load(interpol);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+/*  
+    FUNCION "rksplines"
+    Resuelve un sistema de ecuaciones diferenciales ordinarias de orden 1 de forma numérica
+    mediante la función "rk" y hace una interpolación por medio de splines cúbicas de las soluciones.
+    input:
+        edos = Lista con las expresiones que definen las derivadas de cada una de las variables dependientes en función de la variable independiente.
+        dependientes = Lista con las variables dependientes.
+        iniciales = Lista de valores inciales para las variables dependientes.
+        independiente = Lista con la variable independiente, el valor inicial y el valor final de la misma.
+        [opciones] = Parámetros opcionales. Sólo se permite el valor de los incrementos para calcular los puntos desde el valor inicial hasta el valor final.
+    output:
+        Lista con dos posiciones, en la primera posición tenemos la matriz de los resultados 
+        devueltos por la función "rk", en la segunda posición tenemos una lista con las splines
+        cúbicas que ajustan las soluciones numéricas para cada ecuación de "edos" devueltas por la función "rk".
+    Notas:
+        - Se permite que los tres primeros parámetros no sean lista y contengan un sólo elemento.
+        - Se suponen cargados los paquetes "dynamics" y "interpol".
+        - Se suponen los datos de entrada coherentes, es decir:
+            - La listas "edos", "dependientes" y "iniciales" tienen el mismo número de elementos.
+            - La lista "independiente" tiene 3 elementos (la variable, un valor inicial y otro final).
+            - El primer parámetro opcional, si existe, es un valor de la forma (final - inicial) / n, donde n + 1 será el número de puntos calculados (n > 0)
+            - Cada elemento de "edos" es una ecuación en función de la variable independiente (primer valor de "independiente") y la variable dependiente situada en la misma posición de la lista "dependientes".
+        - Por lo demás se suponen las mismas restricciones que la función "rk".
+    Ejemplos:
+        rksplines([3/(x+y1), 2*x+y2, x^2-x], [y1, y2, y3], [0, 0, 0], [x, 1, 3], 0.2);
+        rksplines(3/(x+y1), y1, 0, [x, 0.2, 2.4]);
+*/
+rksplines(edos, dependientes, iniciales, independiente, [opciones]) := block(
+    [
+        rkresultados,   /* Matriz donde guardamos el resultado obtenido por "rk", para más info describe(rk); */
+        dominio,        /* Lista donde construimos el dominio requerido por la función "rk" */
+        puntos,         /* Número de puntos devueltos por la función "rk" */
+        paso: 0,        /* Valor de los incrementos */
+        splines: []     /* Lista con los splines cúbicos que ajustan los resultados obtenidos por "rk" */
+    ],
+
+    /* 
+        Si los tres primeros parámetros no son listas, los transformamos en una lista de un elemento
+    */
+    if listp(edos) = false then edos: [edos],
+    if listp(dependientes) = false then dependientes: [dependientes],
+    if listp(iniciales) = false then iniciales: [iniciales],
+
+    /* 
+        Si no se especifica la función "estimará" el valor "paso" para que la solución conste de 21 puntos
+    */
+    if length(opciones) = 0 then paso: (independiente[3]-independiente[2])/20 else paso: opciones[1],
+
+    /* 
+        Construimos el dominio concatenando a la lista "independiente" el valor "paso"
+        La función "rk" requiere esta sintaxis. 
+    */
+    dominio : append(independiente, [paso]),
+
+    /* 
+        Llamamos a la función "rk" y guardamos el resultado en "rkresultados" 
+    */
+    rkresultados : rk(edos, dependientes, iniciales, dominio),
+
+    /* 
+        En "puntos" guardamos el número de puntos de la solución numérica obtenida por "rk" para cada ecuación 
+    */
+    puntos : length(rkresultados),
+
+    /* 
+        Bucle con el que recorremos las soluciones numéricas para cada ecuación de "edos" devuelta por "rk" y, para cada una, generamos la spline cúbica que la ajusta.
+    */
+    for i : 1 thru length(edos) step 1 do (
+        [
+            listapuntos     /* Lista de puntos (x, y) de la solución numérica a la ecuación "i" de "edos" */
+        ],
+
+        /* 
+            Obtenemos la lista de puntos de la solución de la ecuación "i" de los datos devueltos por "rk".
+        */
+        listapuntos : makelist([rkresultados[p][1], rkresultados[p][i+1]], p, 1, puntos),
+
+        /* 
+            Calculamos la spline cúbica que ajusta la lista de puntos "listapuntos" mediante la función "cspline" y la añadimos la lista "splines"
+        */
+        splines : append(splines, [cspline(listapuntos)])
+    ),
+
+    /* 
+        Devolvemos una lista con la solución devuelta por "rk" y la lista de splines cúbicas que ajustan las soluciones 
+    */
+    [rkresultados, splines]
+);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+/*  
+    FUNCION "plotrksplines"
+    Representa gráficamente los resultados obtenidos por la función “rksplines”
+    Se representan las soluciones, donde cada solución consta una lista de puntos devuelta por rk y
+    la spline cúbica que la ajusta, todo ello calculado por la función "rksplines"
+    input:
+        rksplines = Lista con la información devuelta por “rksplines”
+        [opciones] = Lista con las opciones (ver las opciones disponibles en notas).
+    output:
+        Gráfica con los resultados numéricos de las ecuaciones diferenciales (puntos) y las splines cúbicas que los ajustan (líneas).
+    Notas:
+        - Las opciones disponibles son:
+            - dominio: Lista con el dominio a representar (por ejemplo: [dominio, x, 0, 2]).
+            - imagen: Lista con la imagen a representar (por ejemplo: [imagen, y, -2, 2]).
+            - solucion: Lista de indices a representar (por ejemplo: [solucion, 1, 3]). Cada una costa de la representación por puntos de la solución numérica y la representación por líneas de la spline cúbica que la ajusta.
+        - El dominio lo deduce la propia función si no se proporciona como parámetro.
+        - La imagen la deduce la propia función “plot2d” si no se proporciona como parámetro.
+        - Cada índice de “solucion” hace referencia a una ecuación (la solución discreta numérica y la spline).
+        - Se suponen los datos de entrada coherentes, es decir:
+            - Las soluciones numéricas tienen almenos un punto.
+            - Las splines cúbicas son correctas.
+            - Por lo demás se suponen las mismas restricciones que la función "plot2d".
+    Ejemplos:
+        plotrksplines(rkresultado, [dominio, x, 1, 3], [imagen, y, -2, 2], [solucion, 1]);
+        plotrksplines(rkresultado);
+*/
+plotrksplines(rksplines, [opciones]) := block(
+    [
+        vdominio: [],                       /* Dominio (eje X) de plot2d: [x, inicio, fin] */
+        vimagen: [],                        /* Imagen (eje Y) de plot2d: [y, inicio, fin] */
+        visualizar: [],                     /* Índices de las soluciones a visualizar */
+        ldiscretes: [],                     /* Lista de soluciones numéricas a visualizar en plot2d */
+        lsplines: [],                       /* Lista splines cúbicas a representar en plot2d */
+        listatotal: [],                     /* Lista con las soluciones númericas y splines cúbicas a representar en plot2d */
+        estilos: [style],                   /* Estilos de las representaciones de plot2d */
+        leyendas: [legend],                 /* Leyendas de las representaciones de plot2d */
+        nopciones: length(opciones),        /* Número de parámetros opcionales */
+        nsoluciones: length(rksplines[2]),  /* Número de soluciones numéricas (también número de splines cúbicas) */
+        npuntos: length(rksplines[1]),      /* Número de puntos de las soluciones numéricas */
+        nvisualizadas: 0                    /* Número de soluciones visualizadas (numérica + spline) */
+    ],
+
+    /*
+        Se obtiene el dominio a partir de los puntos de la solución numérica (el menor "x" y el mayor "x")
+    */
+    vdominio: [x, rksplines[1][1][1], rksplines[1][npuntos][1]],
+
+    /*
+        Si no se indica lo contrario en el parámetro opcional "solucion" se visualizarán todas las soluciones
+    */
+    visualizar: makelist(i, i, 1, nsoluciones),
+
+    /*
+        Se obtienen los posibles parámetros opcionales (dominio, imagen y soluciones a representar)
+    */
+    for i : 1 thru nopciones step 1 do (
+        if opciones[i][1] = dominio then vdominio: rest(opciones[i]),
+        if opciones[i][1] = imagen then vimagen: rest(opciones[i]),
+        if opciones[i][1] = solucion then visualizar: rest(opciones[i])
+    ),
+
+    /*
+        Recorre todas las soluciones a las ecuaciones disponibles,
+        se comprueba si la solución está en la lista de soluciones representadas y, si es así,
+        se añade a "ldiscretes" la solución numérica, a "lsplines" la spline cúbica que la ajusta y se incrementa el número de soluciones visualizadas
+    */
+    for e : 1 thru nsoluciones step 1 do (
+        if member(e, visualizar) then (
+            ldiscretes: append(ldiscretes, [makelist([rksplines[1][i][1], rksplines[1][i][e+1]], i, 1, npuntos)]),
+            lsplines: append(lsplines, [rksplines[2][e]]),
+            nvisualizadas: nvisualizadas + 1
+        )
+    ),
+
+    /*
+        Se crea una lista de total con las soluciones numéricas y las splines alternadas
+    */
+    listatotal: join(makelist([discrete, ldiscretes[i]], i, 1, nvisualizadas), lsplines),
+
+    /*
+        Se crean los estilos alternando representación por puntos (soluciones numéricas) y representación por líneas (splines).
+        Además se alternan los colores y cada solución numérica y si spline asociada tienen el mismo color.
+        Los estilos siguen la sintaxis definida en "plot2d"
+    */
+    estilos: append(estilos, join(makelist([points, 2, i], i, 1, nvisualizadas), makelist([lines, 1, i], i, 1, nvisualizadas))),
+
+    /*
+        Se crea una lista con las leyendas que aporten una mejor legibilidad de los resultados.
+    */
+    leyendas: append(leyendas, join(makelist(concat("Solución numérica ", visualizar[i]), i, 1, nvisualizadas), makelist(concat("Spline cúbica ", visualizar[i]), i, 1, nvisualizadas))),
+
+    /*
+        Lanza la visualización mediante la función "plot2d". Si se definió una imagen (eje Y) como parámetro, se aplica.
+
+
+    */
+    if length(vimagen) = 0 then
+        plot2d(listatotal, vdominio, estilos, leyendas)
+    else
+        plot2d(listatotal, vdominio, vimagen, estilos, leyendas)
+);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+/*  
+    FUNCION "tayloredo"
+    Calcula una aproximación a la solución de una ecuación diferencial de orden 1 dx/dt=f(x,t)
+    con condiciones iniciales x(a)=xa por medio del desarrollo de una serie de Taylor, 
+    centrado en t=a, y hasta orden "n".
+    input:
+        edo = Expresión que define la derivada de la variable dependiente en función de la variable independiente.: f(x,t)
+        xa = Condición incial. Valor x(a).
+        [opciones] = Lista con las opciones (ver las opciones disponibles en notas).
+    output:
+        Serie de Taylor con una aproximación de la solución de x(t) de orden "n".
+    Notas:
+        - Las opciones disponibles son:
+            - orden: Orden de la serie de Taylor (por ejemplo: [orden, 4]).
+            - centrado: Valor de t para el cual se obtiene la condición inicial xa (por ejemplo: [centrado, 1]). Centrado de la serie de Taylor.
+        - Por defecto t=0 y, por tanto, xa=x(0).
+        - Por defecto el orden "n" es 2.
+        - Se suponen los datos de entrada coherentes:
+            - La expresión "edo" es correcta y viene expresada en función de "x" y "t".
+            - La expresión "edo" es derivable hasta orden "n".
+    Ejemplos:
+        tayloredo(%e^t, 1);
+        tayloredo(sin(t), -1, [orden, 6]);     
+        tayloredo(t/x, 1, [orden, 4], [centrado, 2]);
+*/
+tayloredo(edo, xa, [opciones]) := block(
+    [
+        nopciones: length(opciones),        /* Número de parámetros opcionales */
+        derivada: edo,                      /* Se guarda la última derivada */
+        coeficiente,                        /* Se guarda el último coeficiente de la serie de Taylor (f^n(a)) */
+        factorial: 1,                       /* Se guarda el último factorial de la serie de Taylor */
+        taylorexpr: xa,                     /* Expresión de la serie de Taylor (el primer monomio es xa) */
+        a: 0,                               /* centrado en t = a (por defecto a = 0) */
+        n: 2                                /* Desarroyo de taylor hasta la derivada n (por defecto n = 2) */
+    ],
+
+    /*
+        Se obtienen los posibles parámetros opcionales.
+        Orden de la derivada a llegar: "n".
+        Centrado de la serie de Taylor o condición inicial de t: "a"
+    */
+    for i : 1 thru nopciones step 1 do (
+        if opciones[i][1] = orden then n: opciones[i][2],
+        if opciones[i][1] = centrado then a: opciones[i][2]
+    ),
+
+    /*
+        El coeficiente de la primera derivada es f(xa, a)
+        El desarrollo de Taylor continua con lo anterior más coeficiente * (t -a)
+    */
+    coeficiente: subst(a, t, subst(xa, x, derivada)),
+    taylorexpr: taylorexpr + coeficiente * (t - a),
+
+    /*
+        Vamos desarrollando desde el orden 2 hasta el "n".
+        Derivamos por partes la última derivada realizada.
+        Calculamos el coeficiente de la serie de Taylor: f^i(xa, a)
+        Calculamos el factorial para ese orden.
+        Calculamos el nuevo monomio de la serie de Taylor: (coeficiente/i!)*(t-a)^i i lo concatenamos al resto
+    */
+    for i : 2 thru n step 1 do (
+        derivada: diff(derivada, x) * coeficiente + diff(derivada, t),
+        coeficiente: subst(a, t, subst(xa, x, derivada)),
+        factorial: factorial * i,
+        taylorexpr: taylorexpr + (coeficiente * (t - a)^i) / factorial
+    ),
+
+    /*
+        Devolvemos la aproximación a x(t) mediante la serie de Taylor de orden "n" calculada.
+    */
+    taylorexpr
+);
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$
