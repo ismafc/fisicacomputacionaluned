@@ -27,7 +27,7 @@ void guardaPGMi(char* nombre, int anchura, int altura, int *pixels, int pixel_mi
 	fclose (imagen);
 }
 
-void guardaPGMi(char* nombre, int altura, int anchura, int **pixels, int pixel_min, int pixel_max)
+void guardaPGMiACE(char* nombre, int altura, int anchura, int **pixels, int pixel_min, int pixel_max)
 {
 	int i, j, p;
 	FILE* imagen;
@@ -38,7 +38,7 @@ void guardaPGMi(char* nombre, int altura, int anchura, int **pixels, int pixel_m
 	fprintf(imagen, "255\n");
 	for (i = 0; i < altura; i++)
 	{
-		for (j = 0; j < anchura; j++)
+		for (j = 1; j < anchura - 1; j++)
 		{
 			p = (255 * (pixels[i][j] - pixel_min)) / (pixel_max - pixel_min);
 			if (p < 0) 

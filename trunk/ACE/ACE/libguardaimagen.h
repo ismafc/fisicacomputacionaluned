@@ -8,7 +8,7 @@
 	que contiene en sus píxeles valores enteros entre pixel_min y pixel_max 
 */
 void guardaPGMi (char* nombre, int anchura, int altura, int *pixels, int pixel_min, int pixel_max);
-void guardaPGMi (char* nombre, int anchura, int altura, int **pixels, int pixel_min, int pixel_max);
+void guardaPGMiACE (char* nombre, int anchura, int altura, int **pixels, int pixel_min, int pixel_max);
 
 /* 
 	Guarda en el archivo de nombre dado una imagen PGM de dimensiones anchura X altura 
