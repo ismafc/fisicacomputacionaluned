@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#pragma warning ( disable: 4996 )
+
 void guardaPGMi(char* nombre, int anchura, int altura, int *pixels, int pixel_min, int pixel_max)
 {
 	int i, j, ij, p;
@@ -62,9 +64,9 @@ void guardaPGMd (char* nombre, int anchura, int altura, double *pixels, double p
 	ij=0;
 	for (i=0; i<altura; i++)
 	{
-		for (j=0; j<anchura; j++)
+		for (j = 0; j < anchura; j++)
 		{
-			p= (int) (255*(pixels [ ij ]-pixel_min)) / (pixel_max-pixel_min);
+			p = (int)((255.0 * (pixels[ij] - pixel_min)) / (pixel_max - pixel_min));
 			if ( p<0 ) p=0;
 			if ( p>255) p=255;
 			fprintf (imagen, " %d", p);
