@@ -10,6 +10,7 @@
 
 #define INICIALIZACION_SEMILLA		0		// Se inicializa con un '1' en la primera fila, en la columna central
 #define INICIALIZACION_ALEATORIA	1		// Se inicializa con una distribución aleatoria de '0' y '1' en la primera fila
+#define INICIALIZACION_SIMILAR		2		// Se inicializa con la primera fila similar a otra pero cambiado sólo el valor central negado
 
 #define REGLA						54		// regla a aplicar por defecto
 #define CELDAS						1000	// número de celdas del ACE por defecto
@@ -26,7 +27,7 @@
 #define MIN_REGLA					0		// primera regla
 #define MAX_REGLA					255		// última regla
 
-int aleatorio(int a, int b) 
+int aleatorio(int a, int b)
 {
 	double numerador = b - a;
 	double denominador = RAND_MAX;
@@ -40,7 +41,7 @@ int aleatorio(int a, int b)
 	return a + (int)resultado;
 }
 
-void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INICIALIZACION_SEMILLA)
+void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INICIALIZACION_SEMILLA, int* base = NULL)
 {
 	int i;
 
@@ -56,6 +57,11 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
 	else if (inicializacion == INICIALIZACION_ALEATORIA) {
 		for (i = 0; i < celdas + 2; i++)
 			(*ACE)[0][i] = aleatorio(0, 1);
+	}
+	else if (inicializacion == INICIALIZACION_SIMILAR) {
+		for (i = 0; i < celdas + 2; i++)
+			(*ACE)[0][i] = base[i];
+		(*ACE)[0][(celdas + 1) / 2] = ((*ACE)[0][(celdas + 1) / 2] == 1) ? 0 : 1;
 	}
 }
 
@@ -75,14 +81,35 @@ void generarACE(int** ACE, int regla, int pasos, int celdas)
 	}
 }
 
+void generarHamming(int** ACE, int regla, int pasos, int celdas)
+{
+	int** ACE1;
+	int* hamming;
+	
+	inicializarACE(&ACE1, pasos, celdas, INICIALIZACION_SIMILAR, ACE[0]);
+	generarACE(ACE1, regla, pasos, celdas);
+
+	hamming = new int [pasos + 1];
+	memset(hamming, 0, (pasos + 1) * sizeof(int));
+	hamming[0] = 1;
+	for (int i = 1; i < pasos + 1; i++) 
+	{
+		for (int j = 1; j < celdas + 1; j++)
+		{
+			hamming[i] += (ACE[i][j] == ACE1[i][j] ? 0 : 1);
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
-	int regla = REGLA;								// regla a aplicar (por defecto REGLA)
-	int celdas = CELDAS;							// celdas del ACE (por defecto CELDAS)
-	int pasos = PASOS;								// pasos de evolución a simular (por defecto PASOS)
-	int inicializacion = INICIALIZACION_SEMILLA;	// por defecto la inicialización es por semilla ACE[0][CELDAS/2]=1
-	int** ACE;										// donde guardamos el estado del autómata [T + 1][N + 2]
-	char strInicializacion[32];						// guardamso el tipo de inicialización para generar el nombre del fichero
+	int regla = REGLA;								// Regla a aplicar (por defecto REGLA)
+	int celdas = CELDAS;							// Celdas del ACE (por defecto CELDAS)
+	int pasos = PASOS;								// Pasos de evolución a simular (por defecto PASOS)
+	int inicializacion = INICIALIZACION_SEMILLA;	// Por defecto la inicialización es por semilla ACE[0][CELDAS/2]=1
+	int** ACE;										// Donde guardamos el estado del autómata [T + 1][N + 2]
+	char strInicializacion[32];						// Guardamos el tipo de inicialización para generar el nombre del fichero
+	bool hamming = false;							// Guardamos si hay que calcular la evolución de la distancia de hamming
 
 	// Inicializamos el texto de la inicialización del ACE como "semilla"
 	strcpy(strInicializacion, "semilla");
@@ -101,6 +128,10 @@ int main(int argc, char** argv)
 				strcpy(strInicializacion, "semilla");
 				inicializacion = INICIALIZACION_SEMILLA;
 			}
+		}
+		else if (strstr(argv[a -1], "hamming:") == argv[a - 1]) {
+			if (strstr(argv[a -1], ":si") != NULL)
+				hamming = true;
 		}
 		else if (strstr(argv[a -1], "regla:") == argv[a - 1]) {
 			if (strstr(argv[a -1], ":todas") != NULL) 
@@ -139,6 +170,9 @@ int main(int argc, char** argv)
 			char nombreFichero[256];
 			sprintf(nombreFichero, "ACE_R%03d_%s.pgm", r, strInicializacion);
 			guardaPGMi(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
+
+			if (hamming)
+				generarHamming(ACE, r, pasos, celdas);
 		}
 	}
 	else {
@@ -150,5 +184,8 @@ int main(int argc, char** argv)
 		char nombreFichero[256];
 		sprintf(nombreFichero, "ACE_R%03d_%s.pgm", regla, strInicializacion);
 		guardaPGMi(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
+
+		if (hamming)
+			generarHamming(ACE, regla, pasos, celdas);
 	}
 }
