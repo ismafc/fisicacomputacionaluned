@@ -76,3 +76,13 @@ void guardaPGMd (char* nombre, int anchura, int altura, double *pixels, double p
 	}
 	fclose (imagen);
 }
+
+void guardaPLOT (char* nombre, int *y, int valores)
+{
+	FILE* plot;
+	plot = fopen(nombre, "wb");
+	for (int i = 0; i < valores; i++) {
+		fprintf (plot, "%d %d\n", i + 1, y[i]);
+	}
+	fclose (plot);
+}
