@@ -81,7 +81,7 @@ void generarACE(int** ACE, int regla, int pasos, int celdas)
 	}
 }
 
-void generarHamming(int** ACE, int regla, int pasos, int celdas)
+int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 {
 	int** ACE1;
 	int* hamming;
@@ -99,6 +99,7 @@ void generarHamming(int** ACE, int regla, int pasos, int celdas)
 			hamming[i] += (ACE[i][j] == ACE1[i][j] ? 0 : 1);
 		}
 	}
+	return hamming;
 }
 
 /*
@@ -122,13 +123,12 @@ void generarHamming(int** ACE, int regla, int pasos, int celdas)
  * inicializacion:semilla		| La primera fila del ACE contiene todo '0' menos un '1' en la posición central
  * hamming:si					| Se calcula la evolución de la distancia de hamming en el tiempo
  *								| entre el ACE calculado y otro que difiere únicamente en el valor central 
- *								| de la primera fila del ACE. Cada evolución calculada se guarda en un fichero.
+ *								| de la primera fila. Cada evolución calculada se guarda en un fichero.
  * regla:todas					| Se calculan los ACEs (y se guardan en ficheros) de todas las reglas [0, 255]
  * regla:4						| Se calcula el ACE (y se guarda en ficheros) de la regla 4
  * pasos:300					| Se calculan 300 pasos de la evolución del ACE
  * celdas:700					| El ACE lo conforman 700 posiciones
  * 
- *
  * Ejemplos:
  *
  * ACE regla:126
@@ -201,17 +201,23 @@ int main(int argc, char** argv)
 		}
 	}
 
-	for (int r = ((regla == TODAS_LAS_REGLAS) ? MIN_REGLA : regla); r <= ((regla == TODAS_LAS_REGLAS) ? MAX_REGLA : regla); r++) { 
+	char nombreFichero[256];
+	int reglaInicial = (regla == TODAS_LAS_REGLAS) ? MIN_REGLA : regla;
+	int reglaFinal = (regla == TODAS_LAS_REGLAS) ? MAX_REGLA : regla;
+	for (int r = reglaInicial; r <= reglaFinal; r++) { 
 		// definimos la condición inicial de nuestro ACE y asignamos la memoria necesaria dinámicamente
 		inicializarACE(&ACE, pasos, celdas, inicializacion);
 
 		generarACE(ACE, r, pasos, celdas);
 
-		char nombreFichero[256];
 		sprintf(nombreFichero, "ACE_R%03d_%s.pgm", r, strInicializacion);
 		guardaPGMiACE(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
 
-		if (hamming)
-			generarHamming(ACE, r, pasos, celdas);
+		if (hamming) {
+			int* distanciasHamming = generarHamming(ACE, r, pasos, celdas);
+
+			sprintf(nombreFichero, "HAMMING_R%03d.dat", r);
+			guardaPLOT(nombreFichero, distanciasHamming, pasos + 1);			
+		}
 	}
 }
