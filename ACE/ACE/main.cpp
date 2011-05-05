@@ -81,19 +81,50 @@ void generarACE(int** ACE, int regla, int pasos, int celdas)
 	}
 }
 
+/*
+ * Nombre: generarHamming
+ *
+ * Descripción: Genera información sobre la evolución de la distancia de Hamming entre el
+ *				ACE que se proporciona como parámetro y otro que evoluciona de un estado inicial
+ *				en el que únicamente difiere el valor de la posición central.
+ *
+ * ACE: Simulación del Autómata Celular Elemental sobre el que se calculará la distancia de Hamming
+ *		creando uno muy similiar que partirá desde el estado inicial de este cambiando únicamente
+ *      la celda central del estado inicial del mismo (primera fila).
+ * regla: Entero con la regla que se aplicó al ACE de entrada y hay que aplicar para 
+ *		  hacer evolucionar el nuevo ACE en el tiempo.
+ * pasos: Número de pasos de que consta el ACE de entrada y que tendrá la simulación del nuevo ACE.
+ * celdas: Número de celdas que tiene el ACE y con que constará el nuevo ACE.
+ *
+ * Devuelve una lista de enteros con la evolución de las distancias de Hamming entre el ACE proporcionado 
+ * y el ACE que evoluciona desde un estado inicial casi idéntico.
+ *
+ */
 int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 {
-	int** ACE1;
-	int* hamming;
+	int** ACE1;		// Nueva simulación
+	int* hamming;	// Distancias de Hamming de cada estado (fila) entre las evoluciones de los ACE
 	
+	// Inicializamos el ACE1, esto es, asignamos memoria y inicializamos la primera
+	// fila (estado inicial) con el estado inicial de ACE sustituyendo la celda central
+	// por la inversa de tal manera que dicho estado inicial sólo difiere en un valor, el del centro.
 	inicializarACE(&ACE1, pasos, celdas, INICIALIZACION_SIMILAR, ACE[0]);
+
+	// Simulamos el nuevo ACE1 con la regla dada
 	generarACE(ACE1, regla, pasos, celdas);
 
+	// Asignamos memoria para generar las distancias de Hamming entre ambos ACEs
 	hamming = new int [pasos + 1];
+
+	// Ponemos todos los valores de las distancias de Hamming a 0
 	memset(hamming, 0, (pasos + 1) * sizeof(int));
+
+	// La distancia de Hamming entre los estados iniciales sabemos que es 1 (el valor central de la primera fila)
 	hamming[0] = 1;
+
 	for (int i = 1; i < pasos + 1; i++) 
 	{
+		// Calculamos la distancia de Hamming para el paso 'i' (número de diferencias)
 		for (int j = 1; j < celdas + 1; j++)
 		{
 			hamming[i] += (ACE[i][j] == ACE1[i][j] ? 0 : 1);
@@ -105,7 +136,6 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 /*
  * Nombre: ACE (Autómata Celular Elemental)
  * Autor: Ismael Flores Campoy
- * Fecha: 28/04/2011
  * Descripción: Genera información a propósito de la evolución de autómatas celulares elementales
  * Sintaxis: ACE <opcion1>:<valor1> <opcion2>:<valor2> ...
  *
