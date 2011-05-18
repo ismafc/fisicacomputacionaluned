@@ -41,6 +41,83 @@ int aleatorio(int a, int b)
 	return a + (int)resultado;
 }
 
+/*
+ * Nombre: regresion
+ *
+ * Descripción: Calcula la recta de regresión correspondiente a los puntos proporcionados como parámetros.
+ *				Genera la pendiente 'my', la ordenada de origen 'y0' y el coeficiente de correlación 'r'.
+ *
+ * puntosx: Vector con las coordenadas X de los puntos.
+ * puntosy: Vector con las coordenadas Y de los puntos.
+ * npuntos: Número de puntos.
+ * my: Pendiente de la recta de regresión Y = my * X + y0.
+ * y0: Ordenada de origen de la recta de regresión Y = my * X + y0.
+ * r: Coeficiente de correlación r^2 = mx * my.
+ *
+ * Devuelve, por referencia, los valores que definen la recta de regresión correspondiente a los puntos proporcionados en los parámetros de entrada.
+ * Devuelve un booleano indicando si el proceso se ha completado correctamente o no.
+ * Se supone que los vectores 'puntosx' y 'puntosy' contiene 'npuntos' valores.
+ *
+ */
+bool regresion(const double* puntosx, const double* puntosy, int npuntos, double& my, double& y0, double& r)
+{
+	double mx = 0.0;
+	double sumx = 0.0;
+	double sumy = 0.0;
+	double sumxy = 0.0;
+	double sumx2 = 0.0;
+	double sumy2 = 0.0;
+	double denominadormx;
+	double denominadormy;
+	double numeradorm;
+
+	if (npuntos <= 0)
+		return false;
+
+	for (int i = 0; i < npuntos; i++) {
+		sumx += puntosx[npuntos];
+		sumy += puntosy[npuntos];
+		sumxy += (puntosx[npuntos] * puntosy[npuntos]);
+		sumx2 += (puntosx[npuntos] * puntosx[npuntos]);
+		sumy2 += (puntosy[npuntos] * puntosy[npuntos]);
+	}
+
+	double N = npuntos;
+	denominadormy = N * sumx2 - sumx * sumx;
+	if (denominadormy == 0.0)
+		return false;
+
+	denominadormx = N * sumy2 - sumy * sumy;
+	if (denominadormx == 0.0)
+		return false;
+
+	numeradorm = N * sumxy - sumx * sumy;
+
+	my = numeradorm / denominadormy;
+	mx = numeradorm / denominadormx;
+	y0 = (sumy - my * sumx) / N;
+
+	if (mx * my < 0.0)
+		return false;
+
+	r = sqrt(mx * my);
+
+	return true;
+}
+
+bool exponenteHamming(int* distanciasHamming, int pasos, double& my)
+{
+	double y0;
+	double r;
+	double* puntosx = new double [pasos];
+	double* puntosy = new double [pasos];
+	for (int i = 0; i < pasos; i++) {
+		puntosx[i] = log((double)i);
+		puntosy[i] = log((double)distanciasHamming[i]);
+	}
+	return regresion(puntosx, puntosy, pasos, my, y0, r);
+}
+
 void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INICIALIZACION_SEMILLA, int* base = NULL)
 {
 	int i;
@@ -130,6 +207,9 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 			hamming[i] += (ACE[i][j] == ACE1[i][j] ? 0 : 1);
 		}
 	}
+
+	//TODO: liberar memoria del ACE1
+
 	return hamming;
 }
 
@@ -247,7 +327,15 @@ int main(int argc, char** argv)
 			int* distanciasHamming = generarHamming(ACE, r, pasos, celdas);
 
 			sprintf(nombreFichero, "HAMMING_R%03d.dat", r);
-			guardaPLOT(nombreFichero, distanciasHamming, pasos + 1);			
+			guardaPLOT(nombreFichero, distanciasHamming, pasos + 1);
+
+			double eh;
+			if (!exponenteHamming(distanciasHamming, pasos + 1, eh))
+				printf("No se pudo calcular el exponente de Hamming\n");
+			else
+				printf("El exponente de Hamming es %d\n", eh);
 		}
+
+		// TODO: Liberar memoria
 	}
 }
