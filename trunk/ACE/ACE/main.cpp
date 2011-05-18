@@ -150,13 +150,30 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
 	else if (inicializacion == INICIALIZACION_SIMILAR) {
 		for (i = 0; i < celdas + 2; i++)
 			(*ACE)[0][i] = base[i];
-		(*ACE)[0][(celdas + 1) / 2] = ((*ACE)[0][(celdas + 1) / 2] == 1) ? 0 : 1;
+		(*ACE)[0][celdas / 2 + 1] = ((*ACE)[0][celdas / 2 + 1] == 1) ? 0 : 1;
 	}
 }
 
+/*
+ * Nombre: generarACE
+ *
+ * Descripción: Genera la evolución del autómata celular elemental ACE con un número de celdas
+ *				'celdas' durante un número de pasos 'pasos' aplicándo la regla 'regla'.
+ *
+ * ACE: Autómata Celular Elemental sobre el que se calculará la evolución. Se supone que la
+ *      primera fila del autómata ya está inicializada con su estado inicial.
+ * regla: Entero con la regla que se aplicará para hacer evolucionar el ACE de entrada.
+ * pasos: Número de pasos de que consta la evolución del ACE.
+ * celdas: Número de celdas que tiene el ACE.
+ *
+ * Devuelve en la variable ACE la evolución del autómata a partir de su estado inicial
+ * aplicando la regla indicada. Se supone que la variable ACE está incializada correctamente, es decir,
+ * que las dimensiones son correctas y su estado incial (primera fila) también.
+ *
+ */
 void generarACE(int** ACE, int regla, int pasos, int celdas)
 {
-	int vecindad; 
+	int vecindad;	// Guardamos
 	for (int i = 1; i < pasos + 1; i++)
 	{
 		for (int j = 1; j < celdas + 1; j++)
@@ -164,7 +181,8 @@ void generarACE(int** ACE, int regla, int pasos, int celdas)
 			vecindad = (ACE[i - 1][j + 1] | ACE[i - 1][j] << 1 | ACE[i - 1][j - 1] << 2);
 			ACE[i][j] = (regla >> vecindad) & 1;
 		}
-		/* actualizamos las condiciones periódicas de contorno */
+
+		// actualizamos las condiciones periódicas de contorno
 		ACE[i][0] = ACE[i][celdas];
 		ACE[i][celdas + 1] = ACE[i][1];
 	}
@@ -265,8 +283,8 @@ int main(int argc, char** argv)
 	int regla = REGLA;								// Regla a aplicar (por defecto REGLA)
 	int celdas = CELDAS;							// Celdas del ACE (por defecto CELDAS)
 	int pasos = PASOS;								// Pasos de evolución a simular (por defecto PASOS)
-	int inicializacion = INICIALIZACION_SEMILLA;	// Por defecto la inicialización es por semilla ACE[0][CELDAS/2]=1
-	int** ACE;										// Donde guardamos el estado del autómata [T + 1][N + 2]
+	int inicializacion = INICIALIZACION_SEMILLA;	// Por defecto la inicialización es por semilla ACE[0][CELDAS /2 + 1]=1
+	int** ACE;										// Donde guardamos el estado del autómata [PASOS + 1][CELDAS + 2]
 	char strInicializacion[32];						// Guardamos el tipo de inicialización para generar el nombre del fichero
 	bool hamming = false;							// Guardamos si hay que calcular la evolución de la distancia de hamming
 
