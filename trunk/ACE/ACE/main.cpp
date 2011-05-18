@@ -173,7 +173,7 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
  */
 void generarACE(int** ACE, int regla, int pasos, int celdas)
 {
-	int vecindad;	// Guardamos
+	int vecindad;	// Guardamos la vecindad del paso anterior (0-7)
 	for (int i = 1; i < pasos + 1; i++)
 	{
 		for (int j = 1; j < celdas + 1; j++)
