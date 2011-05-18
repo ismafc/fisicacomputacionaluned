@@ -75,11 +75,11 @@ bool regresion(const double* puntosx, const double* puntosy, int npuntos, double
 		return false;
 
 	for (int i = 0; i < npuntos; i++) {
-		sumx += puntosx[npuntos];
-		sumy += puntosy[npuntos];
-		sumxy += (puntosx[npuntos] * puntosy[npuntos]);
-		sumx2 += (puntosx[npuntos] * puntosx[npuntos]);
-		sumy2 += (puntosy[npuntos] * puntosy[npuntos]);
+		sumx += puntosx[i];
+		sumy += puntosy[i];
+		sumxy += (puntosx[i] * puntosy[i]);
+		sumx2 += (puntosx[i] * puntosx[i]);
+		sumy2 += (puntosy[i] * puntosy[i]);
 	}
 
 	double N = npuntos;
@@ -112,10 +112,22 @@ bool exponenteHamming(int* distanciasHamming, int pasos, double& my)
 	double* puntosx = new double [pasos];
 	double* puntosy = new double [pasos];
 	for (int i = 0; i < pasos; i++) {
-		puntosx[i] = log((double)i);
+		puntosx[i] = log((double)(i + 1));
 		puntosy[i] = log((double)distanciasHamming[i]);
 	}
-	return regresion(puntosx, puntosy, pasos, my, y0, r);
+	bool resultado = regresion(puntosx, puntosy, pasos, my, y0, r);
+
+	delete[] puntosx;
+	delete[] puntosy;
+
+	return resultado;
+}
+
+void liberarACE(int** ACE, int pasos)
+{
+	for (int i = 0; i < pasos + 1; i++)
+		delete[] ACE[i];
+	delete[] ACE;
 }
 
 void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INICIALIZACION_SEMILLA, int* base = NULL)
@@ -208,7 +220,8 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 		}
 	}
 
-	//TODO: liberar memoria del ACE1
+	// Liberamos el espacio asignado dinámicamente a ACE1
+	liberarACE(ACE1, pasos);
 
 	return hamming;
 }
@@ -334,8 +347,10 @@ int main(int argc, char** argv)
 				printf("No se pudo calcular el exponente de Hamming\n");
 			else
 				printf("El exponente de Hamming es %d\n", eh);
+
+			delete[] distanciasHamming;
 		}
 
-		// TODO: Liberar memoria
+		liberarACE(ACE, pasos);
 	}
 }
