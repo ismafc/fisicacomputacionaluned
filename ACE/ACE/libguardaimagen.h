@@ -16,6 +16,6 @@ void guardaPGMiACE (char* nombre, int anchura, int altura, int **pixels, int pix
 */
 void guardaPGMd (char* nombre, int anchura, int altura, double *pixels, double pixel_min, double pixel_max);
 
-void guardaPLOT (char* nombre, int *y, int valores);
+void guardaPLOT (char* nombre, const int *y, int valores, int xini = 1);
 
 #endif

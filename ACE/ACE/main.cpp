@@ -105,51 +105,127 @@ bool regresion(const double* puntosx, const double* puntosy, int npuntos, double
 	return true;
 }
 
-bool exponenteHamming(int* distanciasHamming, int pasos, double& my)
+/*
+ * Nombre: exponenteHamming
+ *
+ * Descripción: Calcula el exponente de Hamming que ajusta la evolución de la distancia de Hamming entre dos ACE 
+ *              a una ley de potencias Ht = t^a (siendo 'a' el exponente de Hamming que devolvemos en el parámetro de entrada).
+ *              Dicho exponente corresponde con la pendiente de la recta de regresión de los logaritmos de los puntos.
+ *
+ * distanciasHamming: Vector con la evolución de las distancias de Hamming entre dos ACEs.
+ * pasos: Número de pasos de que consta la evolución del ACE.
+ * eh: Variable en la que devolvemos el exponente de Hamming calculado.
+ *
+ * Devuelve cierto si se ha podido calcular el exponente de Hamming y falso en caso contrario.
+ *
+ */
+bool exponenteHamming(const int* distanciasHamming, int pasos, double& eh)
 {
-	double y0;
-	double r;
-	double* puntosx = new double [pasos];
-	double* puntosy = new double [pasos];
+	double y0;								// Ordenada de la recta de regresión (x = 0)
+	double r;								// Coeficiente de correlación r^2 = mx * my de la recta de regresión
+	double* puntosx = new double [pasos];	// Coordenadas X de los puntos a partir de los que se calculará la regresión
+	double* puntosy = new double [pasos];	// Coordenadas Y de los puntos a partir de los que se calculará la regresión
+
+	// Inicializamos los puntos a partir de las distancias de Hamming aplicando logaritmos
 	for (int i = 0; i < pasos; i++) {
+
+		// Si la distancia de Hamming es 0 las evoluciones han convergido y no tiene sentido calcular la evolución
+		// Las siguientes distancias serán 0 al aplicarse la misma regla al mismo estado de ambos ACEs (determinista)
+		if (distanciasHamming[i] == 0) {
+			delete[] puntosx;
+			delete[] puntosy;
+			return false;
+		}
+
+		// Aplicamos logaritmo a ambas coordenadas de los puntos.
 		puntosx[i] = log((double)(i + 1));
 		puntosy[i] = log((double)distanciasHamming[i]);
 	}
-	bool resultado = regresion(puntosx, puntosy, pasos, my, y0, r);
 
+	// Se calcula la recta de regresión sobre los puntos transformados
+	// en 'eh' tendremos el exponente de Hamming, que es la pendiente de
+	// la recta de regresión Y = eh * X + y0.
+	// 'r' es el coeficiente de correlación que no se usa aquí (y0 tampoco se usa).
+	bool resultado = regresion(puntosx, puntosy, pasos, eh, y0, r);
+
+	// Liberamos memoria
 	delete[] puntosx;
 	delete[] puntosy;
 
 	return resultado;
 }
 
+/*
+ * Nombre: liberarACE
+ *
+ * Descripción: Liberar la memoria asignada a 'ACE'. Se requiere saber cuantos 'pasos' de evolución contenía dicho
+ *              ACE para poder hacer la liberación correctamente ya que hay que liberar cada fila (así se asignó la memoria)
+ *
+ * ACE: Autómata Celular Elemental cuya memoria hay que liberar.
+ * pasos: Número de pasos de que consta la evolución del ACE.
+ *
+ */
 void liberarACE(int** ACE, int pasos)
 {
+	// Liberamos cada fila o paso de evolución
 	for (int i = 0; i < pasos + 1; i++)
 		delete[] ACE[i];
+
+	// Liberamos la lista de punteros a las filas
 	delete[] ACE;
 }
 
-void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INICIALIZACION_SEMILLA, int* base = NULL)
+/*
+ * Nombre: inicializarACE
+ *
+ * Descripción: Asigna la memoria necesaria para guardar lo 'pasos' evolución de un ACE con 'celdas'.
+ *				Inicializa el primer paso de la evolución del ACE según el criterio especificado.
+ *
+ * ACE: Autómata Celular Elemental al que hay que asignar la memoria necesaria e 
+ *      inicializar la priemera fila con el criterio deseado ('inicialización' y 'base').
+ * pasos: Número de pasos de que constará la evolución del ACE.
+ * celdas: Número de celdas que tendrá el ACE.
+ * inicializacion: Tipo de inicialización de la primera fila (paso 0).
+ * base: Si la inicialización es INICIALIZACION_SIMILAR, se inicializa la primera fila con este vector
+ *       modificando únicamente el valor central negándolo (0 <-> 1). Se supone que el vector tiene la misma dimensión
+ *       que el ACE ('celdas' + 2).
+ *
+ * El ACE tendrá 'pasos' + 1 filas (la primera es el paso 0 o inicialización) y 'celdas' + 2 columnas (las dos extras son 
+ * para establecer las condiciones de contorno).
+ *
+ */
+void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INICIALIZACION_SEMILLA, const int* base = NULL)
 {
-	int i;
-
+	// Asignamos la memoria para los pasos (lista de punteros a cada fila -vector-)
 	*ACE = new int* [pasos + 1];
-	for (i = 0; i < pasos + 1; i++)
+
+	// Para cada paso, asignamos la memoria para las celdas e inicializamos sus valores a 0
+	for (int p = 0; p < pasos + 1; p++)
 	{
-		(*ACE)[i] = new int [celdas + 2];
-		memset((*ACE)[i], 0, (celdas + 2) * sizeof(int));
+		(*ACE)[p] = new int [celdas + 2];
+		memset((*ACE)[p], 0, (celdas + 2) * sizeof(int));
 	}
 
+	// Inicializamos la primera fila con un 1 en la celda central
 	if (inicializacion == INICIALIZACION_SEMILLA)
-		(*ACE)[0][(celdas + 1) / 2] = 1;
+		(*ACE)[0][celdas / 2 + 1] = 1;
+	// Inicializamos la primera fila con una distribución aleatoria de 0 y 1
 	else if (inicializacion == INICIALIZACION_ALEATORIA) {
-		for (i = 0; i < celdas + 2; i++)
-			(*ACE)[0][i] = aleatorio(0, 1);
+		for (int c = 1; c < celdas + 1; c++)
+			(*ACE)[0][c] = aleatorio(0, 1);
+
+		// actualizamos las condiciones periódicas de contorno de la primera fila
+		(*ACE)[0][0] = (*ACE)[0][celdas];
+		(*ACE)[0][celdas + 1] = (*ACE)[0][1];
 	}
+	// Inicializamos la primera fila con una copia del vector 'base' cambiando el valor
+	// de la celda central. Se supone que base tiene la dimensión adecuada y las condiciones
+	// periodicas de contorno correctas.
 	else if (inicializacion == INICIALIZACION_SIMILAR) {
-		for (i = 0; i < celdas + 2; i++)
-			(*ACE)[0][i] = base[i];
+		for (int c = 0; c < celdas + 2; c++)
+			(*ACE)[0][c] = base[c];
+
+		// Se invierte el valor de la celda central de la primera fila
 		(*ACE)[0][celdas / 2 + 1] = ((*ACE)[0][celdas / 2 + 1] == 1) ? 0 : 1;
 	}
 }
@@ -173,12 +249,16 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
  */
 void generarACE(int** ACE, int regla, int pasos, int celdas)
 {
-	int vecindad;	// Guardamos la vecindad del paso anterior (0-7)
+	int vecindad;	// Guardamos la vecindad de la celda a calcular [0-7]
+
 	for (int i = 1; i < pasos + 1; i++)
 	{
 		for (int j = 1; j < celdas + 1; j++)
 		{
+			// La vencidad de la celda (i, j) la componen {(i-1, j-1), (i-1, j), (i-1, j+1)}
 			vecindad = (ACE[i - 1][j + 1] | ACE[i - 1][j] << 1 | ACE[i - 1][j - 1] << 2);
+
+			// Comprovamos que valor [0-1] corresponde a dicha vencidad según la regla
 			ACE[i][j] = (regla >> vecindad) & 1;
 		}
 
