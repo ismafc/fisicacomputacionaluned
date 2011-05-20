@@ -38,7 +38,7 @@ void guardaPGMiACE(char* nombre, int altura, int anchura, int **pixels, int pixe
 	fprintf(imagen, "255\n");
 	for (i = 0; i < altura; i++)
 	{
-		for (j = 1; j < anchura - 1; j++)
+		for (j = 0; j < anchura; j++)
 		{
 			p = (255 * (pixels[i][j] - pixel_min)) / (pixel_max - pixel_min);
 			if (p < 0) 

@@ -24,20 +24,27 @@
 #define MIN_CELDAS					2		// como mínimo 2 celdas en el ACE
 #define MAX_CELDAS					10000	// como máximo 10000 celdas en el ACE
 
-#define MIN_REGLA					0		// primera regla
-#define MAX_REGLA					255		// última regla
-
+/*
+ * Nombre: aleatorio
+ *
+ * Descripción: Devuelve un entero aleatorio entre 'a' y 'b' (ambos incluidos y de forma equiprobable)
+ *
+ * a: Valor inicial
+ * b: Valor final
+ *
+ * La función supone que (a < b) y (RAND_MAX > 0)
+ *
+ */
 int aleatorio(int a, int b)
 {
-	double numerador = b - a;
-	double denominador = RAND_MAX;
-	double resultado = ((double)rand() * numerador) / denominador;
+	double denominador = b - a + 1;		// Número de posibles valores a devolver
+	double numerador = RAND_MAX + 1;	// Número de posibles valores de la función 'rand'
+	double resultado;					// Guardamos el índice del valor a devolver que toca [0 .. b - a]
+	
+	// Calculamos el índice del valor a devolver dentro del rango [a .. b]
+	resultado = ((double)rand() * denominador) / numerador;
 
-	if (resultado - floor(resultado) < ceil(resultado) - resultado)
-		resultado = floor(resultado);
-	else
-		resultado = ceil(resultado);
-
+	// Desplazamos el índice para integrarnos en el rango [a .. b]
 	return a + (int)resultado;
 }
 
@@ -61,19 +68,21 @@ int aleatorio(int a, int b)
  */
 bool regresion(const double* puntosx, const double* puntosy, int npuntos, double& my, double& y0, double& r)
 {
-	double mx = 0.0;
-	double sumx = 0.0;
-	double sumy = 0.0;
-	double sumxy = 0.0;
-	double sumx2 = 0.0;
-	double sumy2 = 0.0;
-	double denominadormx;
-	double denominadormy;
-	double numeradorm;
+	double mx = 0.0;		// Necesario para calcular 'r'
+	double sumx = 0.0;		// Sumatorio de los valores de 'puntosx'
+	double sumy = 0.0;		// Sumatorio de los valores de 'puntosy'
+	double sumxy = 0.0;		// Sumatorio de los valores de 'puntosx'*'puntosy'
+	double sumx2 = 0.0;		// Sumatorio de los valores de 'puntosx'^2
+	double sumy2 = 0.0;		// Sumatorio de los valores de 'puntosy'^2
+	double denominadormx;	// Guardaremos el denominador para 'mx'
+	double denominadormy;	// Guardaremos el denominador para 'my'
+	double numeradorm;		// Guardaremos el numerador tanto para 'mx' como para 'my'
+	double N = npuntos;		// Guardamos el número de puntos como un double
 
 	if (npuntos <= 0)
 		return false;
 
+	// Calculamos los sumatorios
 	for (int i = 0; i < npuntos; i++) {
 		sumx += puntosx[i];
 		sumy += puntosy[i];
@@ -82,24 +91,29 @@ bool regresion(const double* puntosx, const double* puntosy, int npuntos, double
 		sumy2 += (puntosy[i] * puntosy[i]);
 	}
 
-	double N = npuntos;
+	// Calculamos el denominador para 'my' (si es cero devolvemos error)
 	denominadormy = N * sumx2 - sumx * sumx;
 	if (denominadormy == 0.0)
 		return false;
 
+	// Calculamos el denominador para 'mx' (si es cero devolvemos error)
 	denominadormx = N * sumy2 - sumy * sumy;
 	if (denominadormx == 0.0)
 		return false;
 
+	// Calculamos el numerador
 	numeradorm = N * sumxy - sumx * sumy;
 
+	// Calculamos 'mx', 'my' y 'y0'
 	my = numeradorm / denominadormy;
 	mx = numeradorm / denominadormx;
 	y0 = (sumy - my * sumx) / N;
 
+	// Si no podemos calcular 'r' devolvemos error
 	if (mx * my < 0.0)
 		return false;
 
+	// Calculamos 'r'
 	r = sqrt(mx * my);
 
 	return true;
@@ -347,12 +361,13 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
  *								| de la primera fila. Cada evolución calculada se guarda en un fichero.
  * regla:todas					| Se calculan los ACEs (y se guardan en ficheros) de todas las reglas [0, 255]
  * regla:4						| Se calcula el ACE (y se guarda en ficheros) de la regla 4
+ * regla:4,90,126				| Se calcula el ACE (y se guarda en ficheros) de laS reglas 4, 90 y 126
  * pasos:300					| Se calculan 300 pasos de la evolución del ACE
  * celdas:700					| El ACE lo conforman 700 posiciones
  * 
  * Ejemplos:
  *
- * ACE regla:126
+ * ACE regla:126,90
  * ACE hamming:si inicializacion:aleatoria
  * ACE regla:todas
  * ACE regla:4 hamming:si pasos:200 celdas:200
@@ -360,13 +375,14 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
  */
 int main(int argc, char** argv)
 {
-	int regla = REGLA;								// Regla a aplicar (por defecto REGLA)
 	int celdas = CELDAS;							// Celdas del ACE (por defecto CELDAS)
 	int pasos = PASOS;								// Pasos de evolución a simular (por defecto PASOS)
 	int inicializacion = INICIALIZACION_SEMILLA;	// Por defecto la inicialización es por semilla ACE[0][CELDAS /2 + 1]=1
 	int** ACE;										// Donde guardamos el estado del autómata [PASOS + 1][CELDAS + 2]
 	char strInicializacion[32];						// Guardamos el tipo de inicialización para generar el nombre del fichero
 	bool hamming = false;							// Guardamos si hay que calcular la evolución de la distancia de hamming
+	int reglas[256];								// Guardamos las reglas a aplicar
+	int nreglas;									// Guardamos el número de reglas a aplicar
 
 	// Inicializamos el texto de la inicialización del ACE como "semilla" (se usará para el nombre del fichero PGM en el que se guardan los resultados)
 	strcpy(strInicializacion, "semilla");
@@ -374,47 +390,78 @@ int main(int argc, char** argv)
 	// Inicializamos la semilla de los números aleatorios
 	srand((unsigned int)time(NULL));
 
+	// Por defecto aplicaremos la regla REGLA si como argumento no indicamos otra cosa
+	reglas[0] = REGLA;
+	nreglas = 1;
+
 	// Procesado de los parámetros de entrada (si existen)
-	for (int a = 2; a <= argc; a++) {
-		if (strstr(argv[a -1], "inicializacion:") == argv[a - 1]) {
+	for (int a = 1; a < argc; a++) {
+		if (strstr(argv[a], "inicializacion:") == argv[a]) {
 			// Si encontramos un argumento 'inicialización:' analizamos que valor tiene.
-			if (strstr(argv[a -1], ":aleatoria") != NULL) {
+			if (strstr(argv[a], ":aleatoria") != NULL) {
 				strcpy(strInicializacion, "aleatoria");
 				inicializacion = INICIALIZACION_ALEATORIA;
 			}
-			else if (strstr(argv[a -1], ":semilla") != NULL) {
+			else if (strstr(argv[a], ":semilla") != NULL) {
 				strcpy(strInicializacion, "semilla");
 				inicializacion = INICIALIZACION_SEMILLA;
 			}
 		}
-		else if (strstr(argv[a -1], "hamming:") == argv[a - 1]) {
+		else if (strstr(argv[a], "hamming:") == argv[a]) {
 			// Si encontramos un argumento 'hamming:' analizamos que valor tiene.
-			if (strstr(argv[a -1], ":si") != NULL)
+			if (strstr(argv[a], ":si") != NULL)
 				hamming = true;
 		}
-		else if (strstr(argv[a -1], "regla:") == argv[a - 1]) {
+		else if (strstr(argv[a], "regla:") == argv[a]) {
 			// Si encontramos un argumento 'regla:' analizamos que valor tiene.
-			if (strstr(argv[a -1], ":todas") != NULL) 
-				regla = -1;
+			if (strstr(argv[a], ":todas") != NULL) {
+				nreglas = 256;
+				for (int i = 0; i < 256; i++)
+					reglas[i] = i;
+			}
 			else {
-				regla = atoi(argv[a - 1] + strlen("regla:"));
-				if (regla < 0 || regla > 255 || errno != 0) {
-					regla = REGLA;
-					printf("Parámetro incorrecto, se esperaba una regla entre 0 y 255... Se asume %d\n", regla);
+				// TODO: Poner en una función el parseo de las reglas
+				int nr;
+				nreglas = 0;
+				char nreglatxt[32];
+				char* reglastxt = argv[a] + strlen("regla:");
+				while (strstr(reglastxt, ",") != NULL) {
+					strncpy(nreglatxt, reglastxt, strstr(reglastxt, ",") - reglastxt);
+					nreglatxt[strstr(reglastxt, ",") - reglastxt] = 0;
+					nr = atoi(nreglatxt);
+					if (nr >= 0 || nr <= 255 || errno == 0) {
+						reglas[nreglas] = nr;
+						nreglas++;
+					}
+					else
+						printf("Parámetro incorrecto, se esperaba una regla entre 0 y 255... Se descarta\n");
+					reglastxt = strstr(reglastxt, ",") + 1;
+				}
+				nr = atoi(reglastxt);
+				if (nr >= 0 || nr <= 255 || errno == 0) {
+					reglas[nreglas] = nr;
+					nreglas++;
+				}
+				else
+					printf("Parámetro incorrecto, se esperaba una regla entre 0 y 255... Se descarta\n");
+
+				if (nreglas == 0) {
+					reglas[nreglas] = REGLA;
+					nreglas++;
 				}
 			}
 		}
-		else if (strstr(argv[a -1], "celdas:") == argv[a - 1]) {
+		else if (strstr(argv[a], "celdas:") == argv[a]) {
 			// Si encontramos un argumento 'celdas:' analizamos que valor tiene.
-			celdas = atoi(argv[a - 1] + strlen("celdas:"));
+			celdas = atoi(argv[a] + strlen("celdas:"));
 			if (celdas <= MIN_CELDAS || celdas >= MAX_CELDAS || errno != 0) {
 				celdas = CELDAS;
 				printf("Parámetro incorrecto, se esperaba un número de celdas entre %d y %d... Se asumen %d celdas\n", MIN_CELDAS, MAX_CELDAS, celdas);
 			}
 		}
-		else if (strstr(argv[a -1], "pasos:") == argv[a - 1]) {
+		else if (strstr(argv[a], "pasos:") == argv[a]) {
 			// Si encontramos un argumento 'pasos:' analizamos que valor tiene.
-			pasos = atoi(argv[a - 1] + strlen("pasos:"));
+			pasos = atoi(argv[a] + strlen("pasos:"));
 			if (pasos <= MIN_PASOS || pasos >= MAX_PASOS || errno != 0) {
 				pasos = PASOS;
 				printf("Parámetro incorrecto, se esperaba un número de pasos entre %d y %d... Se asumen %d pasos\n", MIN_PASOS, MAX_PASOS, pasos);
@@ -423,29 +470,33 @@ int main(int argc, char** argv)
 	}
 
 	char nombreFichero[256];
-	int reglaInicial = (regla == TODAS_LAS_REGLAS) ? MIN_REGLA : regla;
-	int reglaFinal = (regla == TODAS_LAS_REGLAS) ? MAX_REGLA : regla;
-	for (int r = reglaInicial; r <= reglaFinal; r++) { 
+	for (int nr = 0; nr < nreglas; nr++) { 
 		// definimos la condición inicial de nuestro ACE y asignamos la memoria necesaria dinámicamente
 		inicializarACE(&ACE, pasos, celdas, inicializacion);
 
-		generarACE(ACE, r, pasos, celdas);
+		generarACE(ACE, reglas[nr], pasos, celdas);
 
-		sprintf(nombreFichero, "ACE_R%03d_%s.pgm", r, strInicializacion);
+		sprintf(nombreFichero, "ACE_R%03d_%s.pgm", reglas[nr], strInicializacion);
 		guardaPGMiACE(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
 
 		if (hamming) {
-			int* distanciasHamming = generarHamming(ACE, r, pasos, celdas);
+			int* distanciasHamming = generarHamming(ACE, reglas[nr], pasos, celdas);
 
-			sprintf(nombreFichero, "HAMMING_R%03d.dat", r);
+			sprintf(nombreFichero, "HAMMING_R%03d.dat", reglas[nr]);
 			guardaPLOT(nombreFichero, distanciasHamming, pasos + 1);
 
+			// TODO: Poner en una función la escritura del exponente de Hamming
 			double eh;
-			if (!exponenteHamming(distanciasHamming, pasos + 1, eh))
-				printf("No se pudo calcular el exponente de Hamming\n");
+			sprintf(nombreFichero, "R%03d.dat", reglas[nr]);
+			FILE* plot;
+			plot = fopen(nombreFichero, "wb");
+			bool esPosible = exponenteHamming(distanciasHamming, pasos + 1, eh);
+			if (esPosible)
+				fprintf(plot, "El exponente de Hamming es %.03f\n", eh);
 			else
-				printf("El exponente de Hamming es %d\n", eh);
-
+				fprintf(plot, "No se pudo calcular el exponente de Hamming\n");
+			fclose (plot);
+						
 			delete[] distanciasHamming;
 		}
 
