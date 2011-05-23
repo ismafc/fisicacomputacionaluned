@@ -11,6 +11,7 @@
 #define INICIALIZACION_SEMILLA		0		// Se inicializa con un '1' en la primera fila, en la columna central
 #define INICIALIZACION_ALEATORIA	1		// Se inicializa con una distribución aleatoria de '0' y '1' en la primera fila
 #define INICIALIZACION_SIMILAR		2		// Se inicializa con la primera fila similar a otra pero cambiado sólo el valor central negado
+#define INICIALIZACION_FIJA			2		// Se inicializa con la primera fila proporcionada
 
 #define REGLA						54		// regla a aplicar por defecto
 #define CELDAS						1000	// número de celdas del ACE por defecto
@@ -202,7 +203,7 @@ void liberarACE(int** ACE, int pasos)
  * inicializacion: Tipo de inicialización de la primera fila (paso 0).
  * base: Si la inicialización es INICIALIZACION_SIMILAR, se inicializa la primera fila con este vector
  *       modificando únicamente el valor central negándolo (0 <-> 1). Se supone que el vector tiene la misma dimensión
- *       que el ACE ('celdas' + 2).
+ *       que el ACE ('celdas' + 2). Si la inicialización es INICIALIZACION_SIMILAR, se inicializa la primera fila con este vector.
  *
  * El ACE tendrá 'pasos' + 1 filas (la primera es el paso 0 o inicialización) y 'celdas' + 2 columnas (las dos extras son 
  * para establecer las condiciones de contorno).
@@ -242,6 +243,12 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
 		// Se invierte el valor de la celda central de la primera fila
 		(*ACE)[0][celdas / 2 + 1] = ((*ACE)[0][celdas / 2 + 1] == 1) ? 0 : 1;
 	}
+	// Inicializamos la primera fila con una copia del vector 'base'.
+	// Se supone que base tiene la dimensión adecuada y las condiciones periodicas de contorno correctas.
+	else if (inicializacion == INICIALIZACION_FIJA) {
+		for (int c = 0; c < celdas + 2; c++)
+			(*ACE)[0][c] = base[c];
+	}
 }
 
 /*
@@ -255,18 +262,23 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
  * regla: Entero con la regla que se aplicará para hacer evolucionar el ACE de entrada.
  * pasos: Número de pasos de que consta la evolución del ACE.
  * celdas: Número de celdas que tiene el ACE.
+ * probabilidades: Actualiza las probabilidades (aumenta en uno) según el estado en cada paso
  *
  * Devuelve en la variable ACE la evolución del autómata a partir de su estado inicial
  * aplicando la regla indicada. Se supone que la variable ACE está incializada correctamente, es decir,
  * que las dimensiones son correctas y su estado incial (primera fila) también.
+ * Si 'probabilidades' tienen un puntero válido se supone que tiene las dimensiones correctas: (pasos + 1)*(2^celdas)
  *
  */
-void generarACE(int** ACE, int regla, int pasos, int celdas)
+void generarACE(int** ACE, int regla, int pasos, int celdas, int** probabilidades = NULL)
 {
 	int vecindad;	// Guardamos la vecindad de la celda a calcular [0-7]
+	int estado;		// Vamos calculando el estado que queda en cada paso
 
 	for (int i = 1; i < pasos + 1; i++)
 	{
+		estado = 0; // Inicializamos el valor del estado para el paso 'i'
+
 		for (int j = 1; j < celdas + 1; j++)
 		{
 			// La vencidad de la celda (i, j) la componen {(i-1, j-1), (i-1, j), (i-1, j+1)}
@@ -274,7 +286,14 @@ void generarACE(int** ACE, int regla, int pasos, int celdas)
 
 			// Comprovamos que valor [0-1] corresponde a dicha vencidad según la regla
 			ACE[i][j] = (regla >> vecindad) & 1;
+
+			// Actualizamos el valor del estado
+			estado += ACE[i][j] * (int)pow(2.0, celdas - j);
 		}
+
+		// Actualizamos las probabilidades de caer en el 'estado' en el paso 'i'
+		if (probabilidades)
+			probabilidades[i][estado]++;
 
 		// actualizamos las condiciones periódicas de contorno
 		ACE[i][0] = ACE[i][celdas];
@@ -401,6 +420,31 @@ bool parsearReglas(int* reglas, int &nreglas, const char* reglastxt)
 }
 
 /*
+ * Nombre: generarEstadoInicial
+ *
+ * Descripción: Genera un vector con el estado inicial 'estado' de un ACE 
+ *				con el número de celdas 'celdas'
+ *
+ * estado: Representa el estado inicial del ACE (hay que pasarlo a binario).
+ * celdas: Número de celdas del ACE.
+ *
+ */
+int* generarEstadoInicial(int estado, int celdas)
+{
+	int* base = new int [celdas + 2];
+
+	// Inciializamos cada posición con su 'bit' correspondiente en 'estado'
+	for (int j = celdas - 1; j >= 0; j--)
+		base[celdas - j] = (estado >> j) & 1;
+
+	// Actualizamos las condiciones periódicas de contorno
+	base[0] = base[celdas];
+	base[celdas + 1] = base[1];
+
+	return base;
+}
+
+/*
  * Nombre: ACE (Autómata Celular Elemental)
  * Autor: Ismael Flores Campoy
  * Descripción: Genera información a propósito de la evolución de autómatas celulares elementales
@@ -433,7 +477,7 @@ bool parsearReglas(int* reglas, int &nreglas, const char* reglastxt)
  *
  * ACE regla:126,90
  * ACE hamming:si inicializacion:aleatoria
- * ACE regla:todas
+ * ACE regla:todas guardar:si
  * ACE regla:4 hamming:si pasos:200 celdas:200
  *
  */
@@ -446,6 +490,7 @@ int main(int argc, char** argv)
 	char strInicializacion[32];						// Guardamos el tipo de inicialización para generar el nombre del fichero
 	bool guardar = false;							// Guardamos si hay que guardar el ACE en un fichero o no
 	bool hamming = false;							// Guardamos si hay que calcular la evolución de la distancia de hamming
+	bool atractor = false;							// Guardamos si hay que calcular los atractores o no
 	int reglas[256];								// Guardamos las reglas a aplicar
 	int nreglas;									// Guardamos el número de reglas a aplicar
 
@@ -476,6 +521,11 @@ int main(int argc, char** argv)
 			// Si encontramos un argumento 'hamming:' analizamos que valor tiene.
 			if (strstr(argv[a], ":si") != NULL)
 				hamming = true;
+		}
+		else if (strstr(argv[a], "atractor:") == argv[a]) {
+			// Si encontramos un argumento 'atractor:' analizamos que valor tiene.
+			if (strstr(argv[a], ":si") != NULL)
+				atractor = true;
 		}
 		else if (strstr(argv[a], "guardar:") == argv[a]) {
 			// Si encontramos un argumento 'guardar:' analizamos que valor tiene.
@@ -518,31 +568,53 @@ int main(int argc, char** argv)
 		generarACE(ACE, reglas[nr], pasos, celdas);
 
 		if (guardar) {
-			sprintf(nombreFichero, "ACE_R%03d_%s.pgm", reglas[nr], strInicializacion);
+			sprintf(nombreFichero, "ACE_R%03d_C%05d_P%05d_%s.pgm", reglas[nr], celdas, pasos, strInicializacion);
 			guardaPGMiACE(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
 		}
 
+		// Calculamos la distancia de Hamming y el exponente de Hamming
 		if (hamming) {
 			int* distanciasHamming = generarHamming(ACE, reglas[nr], pasos, celdas);
 
-			sprintf(nombreFichero, "HAMMING_R%03d.dat", reglas[nr]);
+			sprintf(nombreFichero, "HAMMING_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
 			guardaPLOT(nombreFichero, distanciasHamming, pasos + 1);
 
-			// TODO: Poner en una función la escritura del exponente de Hamming
 			double eh;
-			sprintf(nombreFichero, "EHAMMING_R%03d.dat", reglas[nr]);
-			FILE* plot;
-			plot = fopen(nombreFichero, "wb");
 			bool esPosible = exponenteHamming(distanciasHamming, pasos + 1, eh);
-			if (esPosible)
-				fprintf(plot, "El exponente de Hamming es %.03f\n", eh);
-			else
-				fprintf(plot, "No se pudo calcular el exponente de Hamming\n");
-			fclose (plot);
-						
+
+			sprintf(nombreFichero, "EHAMMING_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
+			guardarExponenteHamming(nombreFichero, eh, esPosible);
+
 			delete[] distanciasHamming;
 		}
 
 		liberarACE(ACE, pasos);
+
+		// Calculamos el atractor
+		if (atractor) {
+			int estadosPosibles = (int)pow(2.0, celdas);
+
+			int** probabilidades = new int* [pasos + 1];
+			for (int p = 0; p < pasos + 1; p++)
+			{
+				probabilidades[p] = new int [estadosPosibles];
+				memset(probabilidades[p], 0, estadosPosibles * sizeof(int));
+			}
+
+			for (int estado = 0; estado < estadosPosibles; estado++) {
+				int* base = generarEstadoInicial(estado, celdas);
+
+				inicializarACE(&ACE, pasos, celdas, INICIALIZACION_FIJA, base);
+
+				probabilidades[0][estado]++;
+				generarACE(ACE, reglas[nr], pasos, celdas, probabilidades);
+
+				liberarACE(ACE, pasos);
+				delete[] base;
+			}
+
+			sprintf(nombreFichero, "ATRACTOR_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
+			guardarAtractorPLOT(nombreFichero, probabilidades, pasos + 1, estadosPosibles);
+		}
 	}
 }
