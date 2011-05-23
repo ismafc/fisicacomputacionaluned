@@ -339,6 +339,68 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 }
 
 /*
+ * Nombre: parsearReglas
+ *
+ * Descripción: Obtiene las reglas proporcionadas en 'reglastxt'
+ *				estas reglas son uno o varios números entre 0 y 255
+ *
+ * reglas: Vector de enteros en la que guardaremos las reglas obtenidas.
+ * nreglas: Entero que contiene el número de reglas finalmente obtenidas.
+ * reglastxt: Texto en el que buscamos las reglas. Puede contener uno o más números separados por comas.
+ *
+ * Devuelve en el vector 'reglas' los enteros entre 0 y 255 encontrados en 'reglastxt' y en 'nreglas'
+ * tenemos el número de dichas reglas encontradas. Si no se encuentra ninguna regla se devuelve la regla 'REGLA'.
+ * Como máximo se aceptan 256 reglas en la lista (todas las posibles con reglas de 8 bits).
+ *
+ */
+bool parsearReglas(int* reglas, int &nreglas, const char* reglastxt)
+{
+	int nr;					// Almacenamos cada nueva regla encontrada
+	char nreglatxt[32];		// Almacenamos cada cadena separada por comas encontrada
+
+	// Mientras se encuentren comas (',') se va analizando la cadena 'reglastxt'
+	nreglas = 0;
+	while (strstr(reglastxt, ",") != NULL && nreglas < 255) {
+		// En 'nreglatxt' almacenamos el primer texto antes de la primera coma.
+		strncpy(nreglatxt, reglastxt, strstr(reglastxt, ",") - reglastxt);
+		nreglatxt[strstr(reglastxt, ",") - reglastxt] = 0;
+
+		// Se analiza intenta convertir la cadena a un entero 
+		nr = (strlen(nreglatxt) > 0) ? atoi(nreglatxt) : -1;
+
+		// Si no es una regla válida se descarta, si es válida se añade a la lista
+		if (nr >= 0 || nr <= 255 || errno == 0) {
+			reglas[nreglas] = nr;
+			nreglas++;
+		}
+		else
+			printf("Parámetro incorrecto, se esperaba una regla entre 0 y 255... Se descarta\n");
+
+		// Avanzamos a la siguiente regla, tras la siguiente coma.
+		reglastxt = strstr(reglastxt, ",") + 1;
+	}
+
+	// Se analiza la última cadena sin comas
+	nr = (strlen(reglastxt) > 0) ? atoi(reglastxt) : -1;
+
+	// Si no es una regla válida se descarta, si es válida se añade a la lista
+	if (nr >= 0 || nr <= 255 || errno == 0) {
+		reglas[nreglas] = nr;
+		nreglas++;
+	}
+	else
+		printf("Parámetro incorrecto, se esperaba una regla entre 0 y 255... Se descarta\n");
+
+	// Si finalmente no hemos encontrado ninguna regla, pondemos la regla por defecto 'REGLA'
+	if (nreglas == 0) {
+		reglas[nreglas] = REGLA;
+		nreglas++;
+	}
+
+	return true;
+}
+
+/*
  * Nombre: ACE (Autómata Celular Elemental)
  * Autor: Ismael Flores Campoy
  * Descripción: Genera información a propósito de la evolución de autómatas celulares elementales
@@ -347,6 +409,7 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
  * Opción					| Valores (separados por comas)		| Valor por defecto
  * -------------------------------------------------------------------------------------------------------
  * inicializacion			| aleatoria, semilla				| semilla
+ * guardar					| si								| no
  * hamming					| si								| no
  * regla					| [0, 255], todas					| REGLA (54)
  * pasos					| [1, 5000]							| PASOS (500)
@@ -356,6 +419,7 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
  * ------------------------------------------------------------------------------------------------------------
  * inicializacion:aleatoria		| La primera fila del ACE contiene una sucesión aleatoria de '0' y '1'
  * inicializacion:semilla		| La primera fila del ACE contiene todo '0' menos un '1' en la posición central
+ * guardar:si					| Se guarda el ACE (o ACEs) en un fichero
  * hamming:si					| Se calcula la evolución de la distancia de hamming en el tiempo
  *								| entre el ACE calculado y otro que difiere únicamente en el valor central 
  *								| de la primera fila. Cada evolución calculada se guarda en un fichero.
@@ -380,6 +444,7 @@ int main(int argc, char** argv)
 	int inicializacion = INICIALIZACION_SEMILLA;	// Por defecto la inicialización es por semilla ACE[0][CELDAS /2 + 1]=1
 	int** ACE;										// Donde guardamos el estado del autómata [PASOS + 1][CELDAS + 2]
 	char strInicializacion[32];						// Guardamos el tipo de inicialización para generar el nombre del fichero
+	bool guardar = false;							// Guardamos si hay que guardar el ACE en un fichero o no
 	bool hamming = false;							// Guardamos si hay que calcular la evolución de la distancia de hamming
 	int reglas[256];								// Guardamos las reglas a aplicar
 	int nreglas;									// Guardamos el número de reglas a aplicar
@@ -412,6 +477,11 @@ int main(int argc, char** argv)
 			if (strstr(argv[a], ":si") != NULL)
 				hamming = true;
 		}
+		else if (strstr(argv[a], "guardar:") == argv[a]) {
+			// Si encontramos un argumento 'guardar:' analizamos que valor tiene.
+			if (strstr(argv[a], ":si") != NULL)
+				guardar = true;
+		}
 		else if (strstr(argv[a], "regla:") == argv[a]) {
 			// Si encontramos un argumento 'regla:' analizamos que valor tiene.
 			if (strstr(argv[a], ":todas") != NULL) {
@@ -419,37 +489,8 @@ int main(int argc, char** argv)
 				for (int i = 0; i < 256; i++)
 					reglas[i] = i;
 			}
-			else {
-				// TODO: Poner en una función el parseo de las reglas
-				int nr;
-				nreglas = 0;
-				char nreglatxt[32];
-				char* reglastxt = argv[a] + strlen("regla:");
-				while (strstr(reglastxt, ",") != NULL) {
-					strncpy(nreglatxt, reglastxt, strstr(reglastxt, ",") - reglastxt);
-					nreglatxt[strstr(reglastxt, ",") - reglastxt] = 0;
-					nr = atoi(nreglatxt);
-					if (nr >= 0 || nr <= 255 || errno == 0) {
-						reglas[nreglas] = nr;
-						nreglas++;
-					}
-					else
-						printf("Parámetro incorrecto, se esperaba una regla entre 0 y 255... Se descarta\n");
-					reglastxt = strstr(reglastxt, ",") + 1;
-				}
-				nr = atoi(reglastxt);
-				if (nr >= 0 || nr <= 255 || errno == 0) {
-					reglas[nreglas] = nr;
-					nreglas++;
-				}
-				else
-					printf("Parámetro incorrecto, se esperaba una regla entre 0 y 255... Se descarta\n");
-
-				if (nreglas == 0) {
-					reglas[nreglas] = REGLA;
-					nreglas++;
-				}
-			}
+			else
+				parsearReglas(reglas, nreglas, argv[a] + strlen("regla:"));
 		}
 		else if (strstr(argv[a], "celdas:") == argv[a]) {
 			// Si encontramos un argumento 'celdas:' analizamos que valor tiene.
@@ -476,8 +517,10 @@ int main(int argc, char** argv)
 
 		generarACE(ACE, reglas[nr], pasos, celdas);
 
-		sprintf(nombreFichero, "ACE_R%03d_%s.pgm", reglas[nr], strInicializacion);
-		guardaPGMiACE(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
+		if (guardar) {
+			sprintf(nombreFichero, "ACE_R%03d_%s.pgm", reglas[nr], strInicializacion);
+			guardaPGMiACE(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
+		}
 
 		if (hamming) {
 			int* distanciasHamming = generarHamming(ACE, reglas[nr], pasos, celdas);
@@ -487,7 +530,7 @@ int main(int argc, char** argv)
 
 			// TODO: Poner en una función la escritura del exponente de Hamming
 			double eh;
-			sprintf(nombreFichero, "R%03d.dat", reglas[nr]);
+			sprintf(nombreFichero, "EHAMMING_R%03d.dat", reglas[nr]);
 			FILE* plot;
 			plot = fopen(nombreFichero, "wb");
 			bool esPosible = exponenteHamming(distanciasHamming, pasos + 1, eh);
