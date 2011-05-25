@@ -186,14 +186,14 @@ void liberarACE(int** ACE, int pasos)
 	for (int i = 0; i < pasos + 1; i++)
 		delete[] ACE[i];
 
-	// Liberamos la lista de punteros a las filas
+	// Liberamos el vector de punteros a las filas
 	delete[] ACE;
 }
 
 /*
  * Nombre: inicializarACE
  *
- * Descripción: Asigna la memoria necesaria para guardar lo 'pasos' evolución de un ACE con 'celdas'.
+ * Descripción: Asigna la memoria necesaria para guardar los 'pasos' evolución de un ACE con 'celdas'.
  *				Inicializa el primer paso de la evolución del ACE según el criterio especificado.
  *
  * ACE: Autómata Celular Elemental al que hay que asignar la memoria necesaria e 
@@ -252,6 +252,57 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
 }
 
 /*
+ * Nombre: liberarAtractores
+ *
+ * Descripción: Libera la memoria asignada a la estructura que almacena las veces que se visita cada estado en cada paso.
+ *              Libera la memoria asignada a la estructura que almacena el porcentaje de estados diferentes visitados en cada paso.
+ *
+ * probabilidades: Para cada paso, guarda cuantas veces se visitó cada estado posible.
+ * visitados: Para cada paso, guarda el porcentaje de estados diferentes visitados.
+ * pasos: Número de pasos de que constan las simulaciones.
+ *
+ */
+void liberarAtractores(int** probabilidades, int* visitados, int pasos)
+{
+	// Liberamos cada paso que consta de un vector con las veces en que se visitó cada estado
+	for (int i = 0; i < pasos + 1; i++)
+		delete[] probabilidades[i];
+
+	// Liberamos el vector de punteros
+	delete[] probabilidades;
+
+	// Liberamos el vector
+	delete[] visitados;
+}
+
+/*
+ * Nombre: inicializarAtractores
+ *
+ * Descripción: Asigna la memoria necesaria para guardar el número de visitas a cada estado en cada paso ('probabilidades')
+ *				a partir de las simulaciones partiendo de una serie de estados iniciales que abarca todo el espacio de fases.
+ *				También asigna memoria para guardar el porcentaje de estados diferentes visitados en cada paso a partir de la misma simulación,
+ *				es decir, en cada paso contará el número de estados diferentes visitados, dividirá por el número de estados posibles.
+ *
+ * probabilidades: Para cada paso, guardará cuantas veces se visitó cada estado posible.
+ * visitados: Para cada paso, guardaremos la relación entre el número de estados diferentes visitados y el número de estados posibles [0..10000]
+ *            Ya que guardaremos un entero representando un % con dos decimales de precisión (multiplicado por 100)
+ * pasos: Número de pasos de que constará las evoluciones de los ACEs.
+ * estadosPosibles: Número de estados posibles de los ACEs (2^celdas).
+ *
+ */
+void inicializarAtractores(int*** probabilidades, int** visitados, int pasos, int estadosPosibles)
+{
+	*probabilidades = new int* [pasos + 1];
+	for (int p = 0; p < pasos + 1; p++)
+	{
+		(*probabilidades)[p] = new int [estadosPosibles];
+		memset((*probabilidades)[p], 0, estadosPosibles * sizeof(int));
+	}
+	*visitados = new int [pasos + 1];
+	memset(*visitados, 0, (pasos + 1) * sizeof(int));
+}
+
+/*
  * Nombre: generarACE
  *
  * Descripción: Genera la evolución del autómata celular elemental ACE con un número de celdas
@@ -262,15 +313,17 @@ void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INIC
  * regla: Entero con la regla que se aplicará para hacer evolucionar el ACE de entrada.
  * pasos: Número de pasos de que consta la evolución del ACE.
  * celdas: Número de celdas que tiene el ACE.
- * probabilidades: Actualiza las probabilidades (aumenta en uno) según el estado en cada paso
+ * probabilidades: Guardamos las veces que cada estado es visitado en cada paso
+ * visitados: Guardamos el porcentaje de estados diferentes visitados en cada paso
  *
  * Devuelve en la variable ACE la evolución del autómata a partir de su estado inicial
  * aplicando la regla indicada. Se supone que la variable ACE está incializada correctamente, es decir,
  * que las dimensiones son correctas y su estado incial (primera fila) también.
- * Si 'probabilidades' tienen un puntero válido se supone que tiene las dimensiones correctas: (pasos + 1)*(2^celdas)
+ * Si 'probabilidades' tiene un puntero válido se supone que tiene las dimensiones correctas: (pasos + 1)*(2^celdas)
+ * Si 'visitados' tiene un puntero válido se supone que tiene las dimensiones correctas (pasos + 1)
  *
  */
-void generarACE(int** ACE, int regla, int pasos, int celdas, int** probabilidades = NULL)
+void generarACE(int** ACE, int regla, int pasos, int celdas, int** probabilidades = NULL, int* visitados = NULL)
 {
 	int vecindad;	// Guardamos la vecindad de la celda a calcular [0-7]
 	int estado;		// Vamos calculando el estado que queda en cada paso
@@ -294,6 +347,11 @@ void generarACE(int** ACE, int regla, int pasos, int celdas, int** probabilidade
 		// Actualizamos las probabilidades de caer en el 'estado' en el paso 'i'
 		if (probabilidades)
 			probabilidades[i][estado]++;
+
+		// Actualizamos el número de estados diferentes visitados en el paso 'i'
+		if (visitados)
+			if (probabilidades[i][estado] == 1)
+				visitados[i]++;
 
 		// actualizamos las condiciones periódicas de contorno
 		ACE[i][0] = ACE[i][celdas];
@@ -594,12 +652,9 @@ int main(int argc, char** argv)
 		if (atractor) {
 			int estadosPosibles = (int)pow(2.0, celdas);
 
-			int** probabilidades = new int* [pasos + 1];
-			for (int p = 0; p < pasos + 1; p++)
-			{
-				probabilidades[p] = new int [estadosPosibles];
-				memset(probabilidades[p], 0, estadosPosibles * sizeof(int));
-			}
+			int** probabilidades;
+			int* visitados;
+			inicializarAtractores(&probabilidades, &visitados, pasos, estadosPosibles);
 
 			for (int estado = 0; estado < estadosPosibles; estado++) {
 				int* base = generarEstadoInicial(estado, celdas);
@@ -607,7 +662,8 @@ int main(int argc, char** argv)
 				inicializarACE(&ACE, pasos, celdas, INICIALIZACION_FIJA, base);
 
 				probabilidades[0][estado]++;
-				generarACE(ACE, reglas[nr], pasos, celdas, probabilidades);
+				visitados[0]++;
+				generarACE(ACE, reglas[nr], pasos, celdas, probabilidades, visitados);
 
 				liberarACE(ACE, pasos);
 				delete[] base;
@@ -615,6 +671,13 @@ int main(int argc, char** argv)
 
 			sprintf(nombreFichero, "ATRACTOR_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
 			guardarAtractorPLOT(nombreFichero, probabilidades, pasos + 1, estadosPosibles);
+
+			for (int p = 0; p < pasos + 1; p++)
+				visitados[p] = (visitados[p] * 10000) / estadosPosibles;
+			sprintf(nombreFichero, "ATRACTOR_E_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
+			guardaPLOT(nombreFichero, visitados, pasos + 1);
+
+			liberarAtractores(probabilidades, visitados, pasos);
 		}
 	}
 }
