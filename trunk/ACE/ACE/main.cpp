@@ -25,6 +25,9 @@
 #define MIN_CELDAS					2		// como mínimo 2 celdas en el ACE
 #define MAX_CELDAS					10000	// como máximo 10000 celdas en el ACE
 
+#define N_MIN						3		// En evoluciones por número de celdas, valor mínimo
+#define N_MAX						16		// En evoluciones por número de celdas, valor máximo
+
 /*
  * Nombre: aleatorio
  *
@@ -327,25 +330,22 @@ void inicializarAtractores(int*** probabilidades, int** visitados, int** estados
  * pasos: Número de pasos de que consta la evolución del ACE.
  * celdas: Número de celdas que tiene el ACE.
  *
- * probabilidades: Actualizamos las veces que cada estado es visitado en cada paso
- * visitados: Actualizamos el número de estados diferentes visitados en cada paso
- * estados: Actualizamos el número de veces que un estado ha sido visitado
- *
  * Devuelve en la variable ACE la evolución del autómata a partir de su estado inicial
  * aplicando la regla indicada. Se supone que la variable ACE está incializada correctamente, es decir,
  * que las dimensiones son correctas y su estado incial (primera fila) también.
- * Si 'probabilidades' tiene un puntero válido se supone que tiene las dimensiones correctas: (pasos + 1)*(2^celdas)
- * Si 'visitados' tiene un puntero válido se supone que tiene las dimensiones correctas (pasos + 1)
+ * Devueve un puntero al vector de estados que ha visitado a cada paso, sólo para tamaños de ACE menores que 32 celdas y
+ * sin contar el estado inicial
  *
  */
-void generarACE(int** ACE, int regla, int pasos, int celdas, int** probabilidades = NULL, int* visitados = NULL, int* estados = NULL)
+long* generarACE(int** ACE, int regla, int pasos, int celdas)
 {
 	int vecindad;	// Guardamos la vecindad de la celda a calcular [0-7]
-	int estado;		// Vamos calculando el estado que queda en cada paso
+	long* estados;	// Vamos calculando los estados en los que quedan cada uno de los pasos
 
+	estados = new long [pasos];
 	for (int i = 1; i < pasos + 1; i++)
 	{
-		estado = 0; // Inicializamos el valor del estado para el paso 'i'
+		estados[i - 1] = 0; // Inicializamos el valor del estado para el paso 'i'
 
 		for (int j = 1; j < celdas + 1; j++)
 		{
@@ -355,10 +355,11 @@ void generarACE(int** ACE, int regla, int pasos, int celdas, int** probabilidade
 			// Comprovamos que valor [0-1] corresponde a dicha vencidad según la regla
 			ACE[i][j] = (regla >> vecindad) & 1;
 
-			// Actualizamos el valor del estado
-			estado += ACE[i][j] * (int)pow(2.0, celdas - j);
+			// Actualizamos el valor del estado si el número de celdas del ACE es menor que 32
+			if (celdas < 32)
+				estados[i - 1] += (ACE[i][j] * (long)pow(2.0, celdas - j));
 		}
-
+/*
 		// Actualizamos las probabilidades de caer en el 'estado' en el paso 'i'
 		if (probabilidades)
 			probabilidades[i][estado]++;
@@ -371,11 +372,13 @@ void generarACE(int** ACE, int regla, int pasos, int celdas, int** probabilidade
 		// Actualizamos el número de visitas a dicho estado
 		if (estados)
 			estados[estado]++;
-
+*/
 		// actualizamos las condiciones periódicas de contorno
 		ACE[i][0] = ACE[i][celdas];
 		ACE[i][celdas + 1] = ACE[i][1];
 	}
+
+	return estados;
 }
 
 /*
@@ -521,6 +524,21 @@ int* generarEstadoInicial(int estado, int celdas)
 	return base;
 }
 
+double entropia(int* probabilidades, int celdas)
+{
+	double estadosPosibles = pow(2.0, celdas);
+	double suma = 0.0;
+	double pe;
+	long estados = (long)estadosPosibles;
+	for (long e = 0; e < estados; e++) {
+		if (probabilidades[e] == 0)
+			continue;
+		pe = (double)probabilidades[e] / estadosPosibles;
+		suma += ((pe * log(pe)) / log(2.0));
+	}
+	return -suma / (double)celdas;
+}
+
 /*
  * Nombre: ACE (Autómata Celular Elemental)
  * Autor: Ismael Flores Campoy
@@ -532,6 +550,8 @@ int* generarEstadoInicial(int estado, int celdas)
  * inicializacion			| aleatoria, semilla				| semilla
  * guardar					| si								| no
  * hamming					| si								| no
+ * atractor					| si								| no
+ * irreversibilidad			| si								| no
  * regla					| [0, 255], todas					| REGLA (54)
  * pasos					| [1, 5000]							| PASOS (500)
  * celdas					| [2, 10000]						| CELDAS (1000)
@@ -544,6 +564,11 @@ int* generarEstadoInicial(int estado, int celdas)
  * hamming:si					| Se calcula la evolución de la distancia de hamming en el tiempo
  *								| entre el ACE calculado y otro que difiere únicamente en el valor central 
  *								| de la primera fila. Cada evolución calculada se guarda en un fichero.
+ * atractor:si					| Se calculan los atractores, probabilidades de llegar a cada estado en cada paso,
+ *								| estados visitados en cada paso, visitas a un estado en cualquier paso desde cualquier estado inicial y
+ *								| la evolución de la entropía en cada paso
+ * irreversibilidad:si			| Se calcula la evolución del porcentaje de estados no visitados final en función del número de celdas y
+ *								| la evolución de la entropía final en función del número de celdas
  * regla:todas					| Se calculan los ACEs (y se guardan en ficheros) de todas las reglas [0, 255]
  * regla:4						| Se calcula el ACE (y se guarda en ficheros) de la regla 4
  * regla:4,90,126				| Se calcula el ACE (y se guarda en ficheros) de laS reglas 4, 90 y 126
@@ -568,6 +593,7 @@ int main(int argc, char** argv)
 	bool guardar = false;							// Guardamos si hay que guardar el ACE en un fichero o no
 	bool hamming = false;							// Guardamos si hay que calcular la evolución de la distancia de hamming
 	bool atractor = false;							// Guardamos si hay que calcular los atractores o no
+	bool irreversibilidad = false;					// Guardamos si hay que calcular evoluciones según el número de celdas o no
 	int reglas[256];								// Guardamos las reglas a aplicar
 	int nreglas;									// Guardamos el número de reglas a aplicar
 
@@ -604,6 +630,11 @@ int main(int argc, char** argv)
 			if (strstr(argv[a], ":si") != NULL)
 				atractor = true;
 		}
+		else if (strstr(argv[a], "irreversibilidad:") == argv[a]) {
+			// Si encontramos un argumento 'irreversibilidad:' analizamos que valor tiene.
+			if (strstr(argv[a], ":si") != NULL)
+				irreversibilidad = true;
+		}
 		else if (strstr(argv[a], "guardar:") == argv[a]) {
 			// Si encontramos un argumento 'guardar:' analizamos que valor tiene.
 			if (strstr(argv[a], ":si") != NULL)
@@ -622,7 +653,7 @@ int main(int argc, char** argv)
 		else if (strstr(argv[a], "celdas:") == argv[a]) {
 			// Si encontramos un argumento 'celdas:' analizamos que valor tiene.
 			celdas = atoi(argv[a] + strlen("celdas:"));
-			if (celdas <= MIN_CELDAS || celdas >= MAX_CELDAS || errno != 0) {
+			if (celdas < MIN_CELDAS || celdas > MAX_CELDAS || errno != 0) {
 				celdas = CELDAS;
 				printf("Parámetro incorrecto, se esperaba un número de celdas entre %d y %d... Se asumen %d celdas\n", MIN_CELDAS, MAX_CELDAS, celdas);
 			}
@@ -630,7 +661,7 @@ int main(int argc, char** argv)
 		else if (strstr(argv[a], "pasos:") == argv[a]) {
 			// Si encontramos un argumento 'pasos:' analizamos que valor tiene.
 			pasos = atoi(argv[a] + strlen("pasos:"));
-			if (pasos <= MIN_PASOS || pasos >= MAX_PASOS || errno != 0) {
+			if (pasos < MIN_PASOS || pasos > MAX_PASOS || errno != 0) {
 				pasos = PASOS;
 				printf("Parámetro incorrecto, se esperaba un número de pasos entre %d y %d... Se asumen %d pasos\n", MIN_PASOS, MAX_PASOS, pasos);
 			}
@@ -672,22 +703,41 @@ int main(int argc, char** argv)
 			int estadosPosibles = (int)pow(2.0, celdas);
 
 			int** probabilidades;
-			int* visitados;
-			int* estados;
-			inicializarAtractores(&probabilidades, &visitados, &estados, pasos, estadosPosibles);
+			int* visitadosPaso;
+			int* estadoVisitado;
+			inicializarAtractores(&probabilidades, &visitadosPaso, &estadoVisitado, pasos, estadosPosibles);
 
 			for (int estado = 0; estado < estadosPosibles; estado++) {
 				int* base = generarEstadoInicial(estado, celdas);
 
 				inicializarACE(&ACE, pasos, celdas, INICIALIZACION_FIJA, base);
+				delete[] base;
 
 				probabilidades[0][estado]++;
-				visitados[0]++;
-				estados[estado]++;
-				generarACE(ACE, reglas[nr], pasos, celdas, probabilidades, visitados, estados);
+				visitadosPaso[0]++;
+				estadoVisitado[estado]++;
+				long* estados = generarACE(ACE, reglas[nr], pasos, celdas);
+
+				// probabilidades: Actualizamos las veces que cada estado es visitado en cada paso
+				// visitadosPaso: Actualizamos el número de estados diferentes visitados en cada paso
+				// estadoVisitado: Actualizamos el número de veces que un estado ha sido visitado
+				//
+				// Si 'probabilidades' tiene un puntero válido se supone que tiene las dimensiones correctas: (pasos + 1)*(2^celdas)
+				// Si 'visitados' tiene un puntero válido se supone que tiene las dimensiones correctas (pasos + 1)
+				for (int p = 0; p < pasos; p++) {
+					// Actualizamos las probabilidades de caer en el 'estado' en el paso 'p'
+					probabilidades[p + 1][estados[p]]++;
+
+					// Actualizamos el número de estados diferentes visitados en el paso 'p'
+					if (probabilidades[p + 1][estados[p]] == 1)
+						visitadosPaso[p + 1]++;
+
+					// Actualizamos el número de visitas a dicho estado
+					estadoVisitado[estados[p]]++;
+				}
+				delete[] estados;
 
 				liberarACE(ACE, pasos);
-				delete[] base;
 			}
 
 			sprintf(nombreFichero, "ATRACTOR_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
@@ -695,15 +745,72 @@ int main(int argc, char** argv)
 
 //			for (int p = 0; p < pasos + 1; p++)
 //				visitados[p] = (visitados[p] * 100* 100) / estadosPosibles;
-			sprintf(nombreFichero, "ATRACTOR_PV_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
-			guardaPLOT(nombreFichero, visitados, pasos + 1);
+			sprintf(nombreFichero, "ATRACTOR_VISITADO_PASO_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
+			guardaPLOT(nombreFichero, visitadosPaso, pasos + 1);
 
 //			for (int e = 0; e < estadosPosibles; e++)
 //				estados[e] = (estados[e] * 100 * 100000) / ((pasos + 1) * estadosPosibles);
-			sprintf(nombreFichero, "ATRACTOR_PE_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
-			guardaPLOT(nombreFichero, estados, estadosPosibles);
+			sprintf(nombreFichero, "ATRACTOR_ESTADO_VISITADO_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
+			guardaPLOT(nombreFichero, estadoVisitado, estadosPosibles);
 
-			liberarAtractores(probabilidades, visitados, estados, pasos);
+			// Evolución de la entropia en el tiempo
+			int* entropias = new int [pasos + 1];
+			for (int p = 0; p < pasos + 1; p++)
+				entropias[p] = (int)(entropia(probabilidades[p], celdas) * 1000.0);
+			sprintf(nombreFichero, "ENTROPIA_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
+			guardaPLOT(nombreFichero, entropias, pasos + 1);
+			delete[] entropias;
+
+			liberarAtractores(probabilidades, visitadosPaso, estadoVisitado, pasos);
+		}
+
+		// Irreversibilidad (evolución para número de celdas)
+		if (irreversibilidad) {
+			int* noVisitados = new int [N_MAX - N_MIN + 1];
+			int* entropias = new int [N_MAX - N_MIN + 1];
+			for (int N = N_MIN; N <= N_MAX; N++) {
+				int estadosPosibles = (int)pow(2.0, N);
+
+				int visitadosPaso = 0;
+				int* probabilidades;
+				probabilidades = new int [estadosPosibles];
+				memset(probabilidades, 0, estadosPosibles * sizeof(int));
+
+				for (int estado = 0; estado < estadosPosibles; estado++) {
+					int* base = generarEstadoInicial(estado, N);
+					inicializarACE(&ACE, pasos, N, INICIALIZACION_FIJA, base);
+					delete[] base;
+
+					long* estados = generarACE(ACE, reglas[nr], pasos, N);
+
+					// probabilidades: Actualizamos las veces que cada estado es visitado en el último paso
+					// visitadosPaso: Actualizamos el número de estados diferentes visitados en el último paso
+					// estadoVisitado: Actualizamos el número de veces que un estado ha sido visitado en el último paso
+					// Actualizamos las probabilidades de caer en el 'estado' en el paso 'p'
+					probabilidades[estados[pasos - 1]]++;
+
+					// Actualizamos el número de estados diferentes visitados en el paso 'p'
+					if (probabilidades[estados[pasos - 1]] == 1)
+						visitadosPaso++;
+
+					delete[] estados;
+					liberarACE(ACE, pasos);
+				}
+
+				noVisitados[N - N_MIN] = (int)((1000.0 * (double)(estadosPosibles - visitadosPaso)) / (double)estadosPosibles);
+				entropias[N - N_MIN] = (int)(entropia(probabilidades, N) * 1000.0);
+
+				delete[] probabilidades;
+			}
+
+			sprintf(nombreFichero, "NOVISITADOS_R%03d.dat", reglas[nr]);
+			guardaPLOT(nombreFichero, noVisitados,  N_MAX - N_MIN + 1, N_MIN);
+
+			sprintf(nombreFichero, "ENTROPIA_R%03d.dat", reglas[nr]);
+			guardaPLOT(nombreFichero, entropias, N_MAX - N_MIN + 1, N_MIN);
+
+			delete[] noVisitados;
+			delete[] entropias;
 		}
 	}
 }

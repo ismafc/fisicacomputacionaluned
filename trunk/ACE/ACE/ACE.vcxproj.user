@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>inicializacion:aleatoria celdas:10 pasos:20 hamming:si regla:4,90,94,126,150,182</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>inicializacion:aleatoria pasos:20 regla:126 celdas:9 guardar:si hamming:si</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>
