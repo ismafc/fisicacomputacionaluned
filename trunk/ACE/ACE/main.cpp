@@ -1,17 +1,10 @@
-#include <memory.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <math.h>
 #include "libguardaimagen.h"
+#include "libACE.h"
 
 #pragma warning ( disable: 4996 )
-
-#define INICIALIZACION_SEMILLA		0		// Se inicializa con un '1' en la primera fila, en la columna central
-#define INICIALIZACION_ALEATORIA	1		// Se inicializa con una distribución aleatoria de '0' y '1' en la primera fila
-#define INICIALIZACION_SIMILAR		2		// Se inicializa con la primera fila similar a otra pero cambiado sólo el valor central negado
-#define INICIALIZACION_FIJA			2		// Se inicializa con la primera fila proporcionada
 
 #define REGLA						54		// regla a aplicar por defecto
 #define CELDAS						1000	// número de celdas del ACE por defecto
@@ -27,30 +20,6 @@
 
 #define N_MIN						3		// En evoluciones por número de celdas, valor mínimo
 #define N_MAX						16		// En evoluciones por número de celdas, valor máximo
-
-/*
- * Nombre: aleatorio
- *
- * Descripción: Devuelve un entero aleatorio entre 'a' y 'b' (ambos incluidos y de forma equiprobable)
- *
- * a: Valor inicial
- * b: Valor final
- *
- * La función supone que (a < b) y (RAND_MAX > 0)
- *
- */
-int aleatorio(int a, int b)
-{
-	double denominador = b - a + 1;		// Número de posibles valores a devolver
-	double numerador = RAND_MAX + 1;	// Número de posibles valores de la función 'rand'
-	double resultado;					// Guardamos el índice del valor a devolver que toca [0 .. b - a]
-	
-	// Calculamos el índice del valor a devolver dentro del rango [a .. b]
-	resultado = ((double)rand() * denominador) / numerador;
-
-	// Desplazamos el índice para integrarnos en el rango [a .. b]
-	return a + (int)resultado;
-}
 
 /*
  * Nombre: regresion
@@ -174,87 +143,6 @@ bool exponenteHamming(const int* distanciasHamming, int pasos, double& eh)
 }
 
 /*
- * Nombre: liberarACE
- *
- * Descripción: Liberar la memoria asignada a 'ACE'. Se requiere saber cuantos 'pasos' de evolución contenía dicho
- *              ACE para poder hacer la liberación correctamente ya que hay que liberar cada fila (así se asignó la memoria)
- *
- * ACE: Autómata Celular Elemental cuya memoria hay que liberar.
- * pasos: Número de pasos de que consta la evolución del ACE.
- *
- */
-void liberarACE(int** ACE, int pasos)
-{
-	// Liberamos cada fila o paso de evolución
-	for (int i = 0; i < pasos + 1; i++)
-		delete[] ACE[i];
-
-	// Liberamos el vector de punteros a las filas
-	delete[] ACE;
-}
-
-/*
- * Nombre: inicializarACE
- *
- * Descripción: Asigna la memoria necesaria para guardar los 'pasos' evolución de un ACE con 'celdas'.
- *				Inicializa el primer paso de la evolución del ACE según el criterio especificado.
- *
- * ACE: Autómata Celular Elemental al que hay que asignar la memoria necesaria e 
- *      inicializar la priemera fila con el criterio deseado ('inicialización' y 'base').
- * pasos: Número de pasos de que constará la evolución del ACE.
- * celdas: Número de celdas que tendrá el ACE.
- * inicializacion: Tipo de inicialización de la primera fila (paso 0).
- * base: Si la inicialización es INICIALIZACION_SIMILAR, se inicializa la primera fila con este vector
- *       modificando únicamente el valor central negándolo (0 <-> 1). Se supone que el vector tiene la misma dimensión
- *       que el ACE ('celdas' + 2). Si la inicialización es INICIALIZACION_SIMILAR, se inicializa la primera fila con este vector.
- *
- * El ACE tendrá 'pasos' + 1 filas (la primera es el paso 0 o inicialización) y 'celdas' + 2 columnas (las dos extras son 
- * para establecer las condiciones de contorno).
- *
- */
-void inicializarACE(int*** ACE, int pasos, int celdas, int inicializacion = INICIALIZACION_SEMILLA, const int* base = NULL)
-{
-	// Asignamos la memoria para los pasos (lista de punteros a cada fila -vector-)
-	*ACE = new int* [pasos + 1];
-
-	// Para cada paso, asignamos la memoria para las celdas e inicializamos sus valores a 0
-	for (int p = 0; p < pasos + 1; p++)
-	{
-		(*ACE)[p] = new int [celdas + 2];
-		memset((*ACE)[p], 0, (celdas + 2) * sizeof(int));
-	}
-
-	// Inicializamos la primera fila con un 1 en la celda central
-	if (inicializacion == INICIALIZACION_SEMILLA)
-		(*ACE)[0][celdas / 2 + 1] = 1;
-	// Inicializamos la primera fila con una distribución aleatoria de 0 y 1
-	else if (inicializacion == INICIALIZACION_ALEATORIA) {
-		for (int c = 1; c < celdas + 1; c++)
-			(*ACE)[0][c] = aleatorio(0, 1);
-
-		// actualizamos las condiciones periódicas de contorno de la primera fila
-		(*ACE)[0][0] = (*ACE)[0][celdas];
-		(*ACE)[0][celdas + 1] = (*ACE)[0][1];
-	}
-	// Inicializamos la primera fila con una copia del vector 'base' cambiando el valor
-	// de la celda central. Se supone que base tiene la dimensión adecuada y las condiciones
-	// periodicas de contorno correctas.
-	else if (inicializacion == INICIALIZACION_SIMILAR) {
-		for (int c = 0; c < celdas + 2; c++)
-			(*ACE)[0][c] = base[c];
-
-		// Se invierte el valor de la celda central de la primera fila
-		(*ACE)[0][celdas / 2 + 1] = ((*ACE)[0][celdas / 2 + 1] == 1) ? 0 : 1;
-	}
-	// Inicializamos la primera fila con una copia del vector 'base'.
-	// Se supone que base tiene la dimensión adecuada y las condiciones periodicas de contorno correctas.
-	else if (inicializacion == INICIALIZACION_FIJA) {
-		for (int c = 0; c < celdas + 2; c++)
-			(*ACE)[0][c] = base[c];
-	}
-}
-
-/*
  * Nombre: liberarAtractores
  *
  * Descripción: Libera la memoria asignada a la estructura que almacena las veces que se visita cada estado en cada paso.
@@ -319,69 +207,6 @@ void inicializarAtractores(int*** probabilidades, int** visitados, int** estados
 }
 
 /*
- * Nombre: generarACE
- *
- * Descripción: Genera la evolución del autómata celular elemental ACE con un número de celdas
- *				'celdas' durante un número de pasos 'pasos' aplicándo la regla 'regla'.
- *
- * ACE: Autómata Celular Elemental sobre el que se calculará la evolución. Se supone que la
- *      primera fila del autómata ya está inicializada con su estado inicial.
- * regla: Entero con la regla que se aplicará para hacer evolucionar el ACE de entrada.
- * pasos: Número de pasos de que consta la evolución del ACE.
- * celdas: Número de celdas que tiene el ACE.
- *
- * Devuelve en la variable ACE la evolución del autómata a partir de su estado inicial
- * aplicando la regla indicada. Se supone que la variable ACE está incializada correctamente, es decir,
- * que las dimensiones son correctas y su estado incial (primera fila) también.
- * Devueve un puntero al vector de estados que ha visitado a cada paso, sólo para tamaños de ACE menores que 32 celdas y
- * sin contar el estado inicial
- *
- */
-long* generarACE(int** ACE, int regla, int pasos, int celdas)
-{
-	int vecindad;	// Guardamos la vecindad de la celda a calcular [0-7]
-	long* estados;	// Vamos calculando los estados en los que quedan cada uno de los pasos
-
-	estados = new long [pasos];
-	for (int i = 1; i < pasos + 1; i++)
-	{
-		estados[i - 1] = 0; // Inicializamos el valor del estado para el paso 'i'
-
-		for (int j = 1; j < celdas + 1; j++)
-		{
-			// La vencidad de la celda (i, j) la componen {(i-1, j-1), (i-1, j), (i-1, j+1)}
-			vecindad = (ACE[i - 1][j + 1] | ACE[i - 1][j] << 1 | ACE[i - 1][j - 1] << 2);
-
-			// Comprovamos que valor [0-1] corresponde a dicha vencidad según la regla
-			ACE[i][j] = (regla >> vecindad) & 1;
-
-			// Actualizamos el valor del estado si el número de celdas del ACE es menor que 32
-			if (celdas < 32)
-				estados[i - 1] += (ACE[i][j] * (long)pow(2.0, celdas - j));
-		}
-/*
-		// Actualizamos las probabilidades de caer en el 'estado' en el paso 'i'
-		if (probabilidades)
-			probabilidades[i][estado]++;
-
-		// Actualizamos el número de estados diferentes visitados en el paso 'i'
-		if (visitados)
-			if (probabilidades[i][estado] == 1)
-				visitados[i]++;
-
-		// Actualizamos el número de visitas a dicho estado
-		if (estados)
-			estados[estado]++;
-*/
-		// actualizamos las condiciones periódicas de contorno
-		ACE[i][0] = ACE[i][celdas];
-		ACE[i][celdas + 1] = ACE[i][1];
-	}
-
-	return estados;
-}
-
-/*
  * Nombre: generarHamming
  *
  * Descripción: Genera información sobre la evolución de la distancia de Hamming entre el
@@ -408,7 +233,8 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 	// Inicializamos el ACE1, esto es, asignamos memoria y inicializamos la primera
 	// fila (estado inicial) con el estado inicial de ACE sustituyendo la celda central
 	// por la inversa de tal manera que dicho estado inicial sólo difiere en un valor, el del centro.
-	inicializarACE(&ACE1, pasos, celdas, INICIALIZACION_SIMILAR, ACE[0]);
+	asignarMemoriaACE(&ACE1, pasos, celdas);
+	inicializarACE(ACE1, celdas, INICIALIZACION_SIMILAR, ACE[0]);
 
 	// Simulamos el nuevo ACE1 con la regla dada
 	generarACE(ACE1, regla, pasos, celdas);
@@ -432,7 +258,7 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 	}
 
 	// Liberamos el espacio asignado dinámicamente a ACE1
-	liberarACE(ACE1, pasos);
+	liberarMemoriaACE(ACE1, pasos);
 
 	return hamming;
 }
@@ -671,13 +497,14 @@ int main(int argc, char** argv)
 	char nombreFichero[256];
 	for (int nr = 0; nr < nreglas; nr++) { 
 		// definimos la condición inicial de nuestro ACE y asignamos la memoria necesaria dinámicamente
-		inicializarACE(&ACE, pasos, celdas, inicializacion);
+		asignarMemoriaACE(&ACE, pasos, celdas);
+		inicializarACE(ACE, celdas, inicializacion);
 
 		generarACE(ACE, reglas[nr], pasos, celdas);
 
 		if (guardar) {
 			sprintf(nombreFichero, "ACE_R%03d_C%05d_P%05d_%s.pgm", reglas[nr], celdas, pasos, strInicializacion);
-			guardaPGMiACE(nombreFichero, pasos + 1, celdas + 2, ACE, 1, 0);
+			guardaPGMiACE(nombreFichero, pasos, celdas, ACE, 1, 0);
 		}
 
 		// Calculamos la distancia de Hamming y el exponente de Hamming
@@ -696,7 +523,7 @@ int main(int argc, char** argv)
 			delete[] distanciasHamming;
 		}
 
-		liberarACE(ACE, pasos);
+		liberarMemoriaACE(ACE, pasos);
 
 		// Calculamos el atractor
 		if (atractor) {
@@ -710,7 +537,8 @@ int main(int argc, char** argv)
 			for (int estado = 0; estado < estadosPosibles; estado++) {
 				int* base = generarEstadoInicial(estado, celdas);
 
-				inicializarACE(&ACE, pasos, celdas, INICIALIZACION_FIJA, base);
+				asignarMemoriaACE(&ACE, pasos, celdas);
+				inicializarACE(ACE, celdas, INICIALIZACION_FIJA, base);
 				delete[] base;
 
 				probabilidades[0][estado]++;
@@ -737,7 +565,7 @@ int main(int argc, char** argv)
 				}
 				delete[] estados;
 
-				liberarACE(ACE, pasos);
+				liberarMemoriaACE(ACE, pasos);
 			}
 
 			sprintf(nombreFichero, "ATRACTOR_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
@@ -778,7 +606,8 @@ int main(int argc, char** argv)
 
 				for (int estado = 0; estado < estadosPosibles; estado++) {
 					int* base = generarEstadoInicial(estado, N);
-					inicializarACE(&ACE, pasos, N, INICIALIZACION_FIJA, base);
+					asignarMemoriaACE(&ACE, pasos, N);
+					inicializarACE(ACE, N, INICIALIZACION_FIJA, base);
 					delete[] base;
 
 					long* estados = generarACE(ACE, reglas[nr], pasos, N);
@@ -794,7 +623,7 @@ int main(int argc, char** argv)
 						visitadosPaso++;
 
 					delete[] estados;
-					liberarACE(ACE, pasos);
+					liberarMemoriaACE(ACE, pasos);
 				}
 
 				noVisitados[N - N_MIN] = (int)((1000.0 * (double)(estadosPosibles - visitadosPaso)) / (double)estadosPosibles);
