@@ -21,9 +21,15 @@
     <ClCompile Include="libguardaimagen.cpp">
       <Filter>Archivos de código fuente</Filter>
     </ClCompile>
+    <ClCompile Include="libACE.cpp">
+      <Filter>Archivos de código fuente</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libguardaimagen.h">
+      <Filter>Archivos de código fuente</Filter>
+    </ClInclude>
+    <ClInclude Include="libACE.h">
       <Filter>Archivos de código fuente</Filter>
     </ClInclude>
   </ItemGroup>
