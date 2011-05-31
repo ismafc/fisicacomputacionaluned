@@ -1,5 +1,7 @@
 #include "libACE.h"
 
+#pragma warning ( disable: 4996 )
+
 int aleatorio(int a, int b)
 {
 	double denominador = b - a + 1;		// Número de posibles valores a devolver
@@ -69,6 +71,9 @@ void liberarMemoriaACE(int** ACE, int pasos)
 
 void inicializarACE(int** ACE, int celdas, int inicializacion, const int* base)
 {
+	// Ponemos todos los valores a 0 como inicialización
+	memset(ACE[0], 0, (celdas + 2) * sizeof(int));
+
 	// Inicializamos la primera fila con un 1 en la celda central
 	if (inicializacion == INICIALIZACION_SEMILLA)
 		ACE[0][celdas / 2 + 1] = 1;
@@ -97,4 +102,195 @@ void inicializarACE(int** ACE, int celdas, int inicializacion, const int* base)
 		for (int c = 0; c < celdas + 2; c++)
 			ACE[0][c] = base[c];
 	}
+}
+
+int obtenerValores(int* valores, int maxvalores, const char* valorestxt, int minvalor, int maxvalor)
+{
+	int nv;					// Almacenamos cada nuevo valor encontrado
+	char nvalortxt[32];		// Almacenamos cada cadena separada por comas encontrada
+	int nvalores;			// Guardamos los valores encontrados en la cadena de texto 'reglastxt'
+
+	// Mientras se encuentren comas (',') se va analizando la cadena 'reglastxt'
+	nvalores = 0;
+	while (strstr(valorestxt, ",") != NULL && nvalores < maxvalores) {
+		// En 'nreglatxt' almacenamos el primer texto antes de la primera coma.
+		strncpy(nvalortxt, valorestxt, strstr(valorestxt, ",") - valorestxt);
+		nvalortxt[strstr(valorestxt, ",") - valorestxt] = 0;
+
+		// Se analiza intenta convertir la cadena a un entero 
+		nv = (strlen(nvalortxt) > 0) ? atoi(nvalortxt) : -1;
+
+		// Si no es una regla válida se descarta, si es válida se añade a la lista
+		if (nv >= minvalor || nv <= maxvalor || errno == 0) {
+			valores[nvalores] = nv;
+			nvalores++;
+		}
+		else
+			printf("Parámetro incorrecto, se esperaba un valor entre %d y %d... Se descarta\n", minvalor, maxvalor);
+
+		// Avanzamos a la siguiente regla, tras la siguiente coma.
+		valorestxt = strstr(valorestxt, ",") + 1;
+	}
+
+	if (nvalores < maxvalores) {
+		if (strstr(valorestxt, "-") != NULL) {
+			// Se analiza el rango de reglas. Primero el valor inicial
+			strncpy(nvalortxt, valorestxt, strstr(valorestxt, "-") - valorestxt);
+			nvalortxt[strstr(valorestxt, "-") - valorestxt] = 0;
+			int desde = atoi(nvalortxt);
+
+			// Después el valor final
+			valorestxt = strstr(valorestxt, "-") + 1;
+			int hasta = atoi(valorestxt);
+			for (int i = desde; i <= hasta && nvalores < maxvalores; i++) {
+				if (i >= minvalor || i <= maxvalor) {
+					valores[nvalores] = i;
+					nvalores++;
+				}
+				else
+					printf("Parámetro incorrecto, se esperaba un valor entre %d y %d... Se descarta\n", minvalor, maxvalor);
+			}
+		}
+		else {
+			// Se analiza la última cadena sin comas
+			nv = (strlen(valorestxt) > 0) ? atoi(valorestxt) : -1;
+
+			// Si no es una regla válida se descarta, si es válida se añade a la lista
+			if (nv >= minvalor || nv <= maxvalor || errno == 0) {
+				valores[nvalores] = nv;
+				nvalores++;
+			}
+			else
+				printf("Parámetro incorrecto, se esperaba un valor entre %d y %d... Se descarta\n", minvalor, maxvalor);
+		}
+	}
+
+	return nvalores;
+}
+
+bool regresion(const double* puntosx, const double* puntosy, int npuntos, double& my, double& y0, double& r)
+{
+	double mx = 0.0;		// Necesario para calcular 'r'
+	double sumx = 0.0;		// Sumatorio de los valores de 'puntosx'
+	double sumy = 0.0;		// Sumatorio de los valores de 'puntosy'
+	double sumxy = 0.0;		// Sumatorio de los valores de 'puntosx'*'puntosy'
+	double sumx2 = 0.0;		// Sumatorio de los valores de 'puntosx'^2
+	double sumy2 = 0.0;		// Sumatorio de los valores de 'puntosy'^2
+	double denominadormx;	// Guardaremos el denominador para 'mx'
+	double denominadormy;	// Guardaremos el denominador para 'my'
+	double numeradorm;		// Guardaremos el numerador tanto para 'mx' como para 'my'
+	double N = npuntos;		// Guardamos el número de puntos como un double
+
+	if (npuntos <= 0)
+		return false;
+
+	// Calculamos los sumatorios
+	for (int i = 0; i < npuntos; i++) {
+		sumx += puntosx[i];
+		sumy += puntosy[i];
+		sumxy += (puntosx[i] * puntosy[i]);
+		sumx2 += (puntosx[i] * puntosx[i]);
+		sumy2 += (puntosy[i] * puntosy[i]);
+	}
+
+	// Calculamos el denominador para 'my' (si es cero devolvemos error)
+	denominadormy = N * sumx2 - sumx * sumx;
+	if (denominadormy == 0.0)
+		return false;
+
+	// Calculamos el denominador para 'mx' (si es cero devolvemos error)
+	denominadormx = N * sumy2 - sumy * sumy;
+	if (denominadormx == 0.0)
+		return false;
+
+	// Calculamos el numerador
+	numeradorm = N * sumxy - sumx * sumy;
+
+	// Calculamos 'mx', 'my' y 'y0'
+	my = numeradorm / denominadormy;
+	mx = numeradorm / denominadormx;
+	y0 = (sumy - my * sumx) / N;
+
+	// Si no podemos calcular 'r' devolvemos error
+	if (mx * my < 0.0)
+		return false;
+
+	// Calculamos 'r'
+	r = sqrt(mx * my);
+
+	return true;
+}
+
+bool exponenteHamming(const int* distanciasHamming, int pasos, double& eh)
+{
+	double y0;								// Ordenada de la recta de regresión (x = 0)
+	double r;								// Coeficiente de correlación r^2 = mx * my de la recta de regresión
+	double* puntosx = new double [pasos];	// Coordenadas X de los puntos a partir de los que se calculará la regresión
+	double* puntosy = new double [pasos];	// Coordenadas Y de los puntos a partir de los que se calculará la regresión
+
+	// Inicializamos los puntos a partir de las distancias de Hamming aplicando logaritmos
+	for (int i = 0; i < pasos; i++) {
+
+		// Si la distancia de Hamming es 0 las evoluciones han convergido y no tiene sentido calcular la evolución
+		// Las siguientes distancias serán 0 al aplicarse la misma regla al mismo estado de ambos ACEs (determinista)
+		if (distanciasHamming[i] == 0) {
+			delete[] puntosx;
+			delete[] puntosy;
+			return false;
+		}
+
+		// Aplicamos logaritmo a ambas coordenadas de los puntos.
+		puntosx[i] = log((double)(i + 1));
+		puntosy[i] = log((double)distanciasHamming[i]);
+	}
+
+	// Se calcula la recta de regresión sobre los puntos transformados
+	// en 'eh' tendremos el exponente de Hamming, que es la pendiente de
+	// la recta de regresión Y = eh * X + y0.
+	// 'r' es el coeficiente de correlación que no se usa aquí (y0 tampoco se usa).
+	bool resultado = regresion(puntosx, puntosy, pasos, eh, y0, r);
+
+	// Liberamos memoria
+	delete[] puntosx;
+	delete[] puntosy;
+
+	return resultado;
+}
+
+int* generarHamming(int** ACE, int regla, int pasos, int celdas)
+{
+	int** ACE1;		// Nueva simulación
+	int* hamming;	// Distancias de Hamming de cada estado (fila) entre las evoluciones de los ACE
+	
+	// Inicializamos el ACE1, esto es, asignamos memoria y inicializamos la primera
+	// fila (estado inicial) con el estado inicial de ACE sustituyendo la celda central
+	// por la inversa de tal manera que dicho estado inicial sólo difiere en un valor, el del centro.
+	asignarMemoriaACE(&ACE1, pasos, celdas);
+	inicializarACE(ACE1, celdas, INICIALIZACION_SIMILAR, ACE[0]);
+
+	// Simulamos el nuevo ACE1 con la regla dada
+	generarACE(ACE1, regla, pasos, celdas);
+
+	// Asignamos memoria para generar las distancias de Hamming entre ambos ACEs
+	hamming = new int [pasos + 1];
+
+	// Ponemos todos los valores de las distancias de Hamming a 0
+	memset(hamming, 0, (pasos + 1) * sizeof(int));
+
+	// La distancia de Hamming entre los estados iniciales sabemos que es 1 (el valor central de la primera fila)
+	hamming[0] = 1;
+
+	for (int i = 1; i < pasos + 1; i++) 
+	{
+		// Calculamos la distancia de Hamming para el paso 'i' (número de diferencias)
+		for (int j = 1; j < celdas + 1; j++)
+		{
+			hamming[i] += (ACE[i][j] == ACE1[i][j] ? 0 : 1);
+		}
+	}
+
+	// Liberamos el espacio asignado dinámicamente a ACE1
+	liberarMemoriaACE(ACE1, pasos);
+
+	return hamming;
 }

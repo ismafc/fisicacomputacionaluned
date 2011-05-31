@@ -89,17 +89,6 @@ void guardaPLOT (char* nombre, const int *y, int valores, int xini)
 	fclose (plot);
 }
 
-void guardarExponenteHamming(char* nombreFichero, double eh, bool esPosible)
-{
-	FILE* fichero;
-	fichero = fopen(nombreFichero, "wb");
-	if (esPosible)
-		fprintf(fichero, "El exponente de Hamming es %.03f\n", eh);
-	else
-		fprintf(fichero, "No se pudo calcular el exponente de Hamming\n");
-	fclose (fichero);
-}
-
 void guardarAtractorPLOT(char* nombreFichero, int** probabilidades, int pasos, int estados)
 {
 	FILE* plot;
