@@ -1,6 +1,8 @@
 #ifndef _LIBACE_H_
 #define _LIBACE_H_
 
+#include <stdio.h>
+#include <string.h>
 #include <memory.h>
 #include <stdlib.h>
 #include <math.h>
@@ -90,5 +92,79 @@ void inicializarACE(int** ACE, int celdas, int inicializacion = INICIALIZACION_S
  *
  */
 long* generarACE(int** ACE, int regla, int pasos, int celdas);
+
+/*
+ * Nombre: obtenerValores
+ *
+ * Descripción: Obtiene los valores proporcionados en 'reglastxt'
+ *				estos valores son uno o varios números enteros separados por comas.
+ *
+ * valores: Vector de enteros en la que guardaremos los valores obtenidos.
+ * maxvalores: Entero que contiene el número máximo de valores que pueden almacenar 'valores'.
+ * valorestxt: Texto en el que buscamos los valores. Puede contener uno o más números enteros separados por comas.
+ *
+ * Devuelve en el vector 'valores' los enteros entre 'minvalor' y 'maxvalor' encontrados en 'valorestxt' y 
+ * devuelve el número de dichos valores encontrados. Si no se encuentra ningún valor se devuelve 0.
+ * Como máximo se aceptan 'maxvalores' valores.
+ *
+ */
+int obtenerValores(int* valores, int maxvalores, const char* valorestxt, int minvalor = 0, int maxvalor = 255);
+
+/*
+ * Nombre: regresion
+ *
+ * Descripción: Calcula la recta de regresión correspondiente a los puntos proporcionados como parámetros.
+ *				Genera la pendiente 'my', la ordenada de origen 'y0' y el coeficiente de correlación 'r'.
+ *
+ * puntosx: Vector con las coordenadas X de los puntos.
+ * puntosy: Vector con las coordenadas Y de los puntos.
+ * npuntos: Número de puntos.
+ * my: Pendiente de la recta de regresión Y = my * X + y0.
+ * y0: Ordenada de origen de la recta de regresión Y = my * X + y0.
+ * r: Coeficiente de correlación r^2 = mx * my.
+ *
+ * Devuelve, por referencia, los valores que definen la recta de regresión correspondiente a los puntos proporcionados en los parámetros de entrada.
+ * Devuelve un booleano indicando si el proceso se ha completado correctamente o no.
+ * Se supone que los vectores 'puntosx' y 'puntosy' contiene 'npuntos' valores.
+ *
+ */
+bool regresion(const double* puntosx, const double* puntosy, int npuntos, double& my, double& y0, double& r);
+
+/*
+ * Nombre: exponenteHamming
+ *
+ * Descripción: Calcula el exponente de Hamming que ajusta la evolución de la distancia de Hamming entre dos ACE 
+ *              a una ley de potencias Ht = t^a (siendo 'a' el exponente de Hamming que devolvemos en el parámetro de entrada).
+ *              Dicho exponente corresponde con la pendiente de la recta de regresión de los logaritmos de los puntos.
+ *
+ * distanciasHamming: Vector con la evolución de las distancias de Hamming entre dos ACEs.
+ * pasos: Número de pasos de que consta la evolución del ACE.
+ * eh: Variable en la que devolvemos el exponente de Hamming calculado.
+ *
+ * Devuelve cierto si se ha podido calcular el exponente de Hamming y falso en caso contrario.
+ *
+ */
+bool exponenteHamming(const int* distanciasHamming, int pasos, double& eh);
+
+/*
+ * Nombre: generarHamming
+ *
+ * Descripción: Genera información sobre la evolución de la distancia de Hamming entre el
+ *				ACE que se proporciona como parámetro y otro que evoluciona de un estado inicial
+ *				en el que únicamente difiere el valor de la posición central.
+ *
+ * ACE: Simulación del Autómata Celular Elemental sobre el que se calculará la distancia de Hamming
+ *		creando uno muy similiar que partirá desde el estado inicial de este cambiando únicamente
+ *      la celda central del estado inicial del mismo (primera fila).
+ * regla: Entero con la regla que se aplicó al ACE de entrada y hay que aplicar para 
+ *		  hacer evolucionar el nuevo ACE en el tiempo.
+ * pasos: Número de pasos de que consta el ACE de entrada y que tendrá la simulación del nuevo ACE.
+ * celdas: Número de celdas que tiene el ACE y con que constará el nuevo ACE.
+ *
+ * Devuelve una lista de enteros con la evolución de las distancias de Hamming entre el ACE proporcionado 
+ * y el ACE que evoluciona desde un estado inicial casi idéntico.
+ *
+ */
+int* generarHamming(int** ACE, int regla, int pasos, int celdas);
 
 #endif

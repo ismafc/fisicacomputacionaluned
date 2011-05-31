@@ -10,10 +10,19 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\ACE\libACE.cpp" />
+    <ClCompile Include="..\ACE\libguardaimagen.cpp" />
+    <ClCompile Include="hamming.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\ACE\libACE.h" />
+    <ClInclude Include="..\ACE\libguardaimagen.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{934A845F-54AB-4A5A-A783-08D9CC2785D1}</ProjectGuid>
+    <ProjectGuid>{99055693-8891-4681-8806-6989E820B40E}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>ACE</RootNamespace>
+    <RootNamespace>HAMMING</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -50,6 +59,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>E:\UNED\Física computacional\ACE\ACE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -73,15 +83,6 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="libACE.cpp" />
-    <ClCompile Include="libguardaimagen.cpp" />
-    <ClCompile Include="ace.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="libACE.h" />
-    <ClInclude Include="libguardaimagen.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
