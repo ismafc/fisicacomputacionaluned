@@ -119,10 +119,10 @@ int main(int argc, char** argv)
 			delete[] probabilidades;
 		}
 
-		sprintf(nombreFichero, "NOVISITADOS_R%03d.dat", reglas[nr]);
+		sprintf(nombreFichero, "NOVISITADOS_R%03d_P%05d.dat", reglas[nr], pasos);
 		guardaPLOT(nombreFichero, noVisitados,  N_MAX - N_MIN + 1, N_MIN, 5);
 
-		sprintf(nombreFichero, "ENTROPIA_R%03d.dat", reglas[nr]);
+		sprintf(nombreFichero, "ENTROPIA_R%03d_P%05d.dat", reglas[nr], pasos);
 		guardaPLOT(nombreFichero, entropias, N_MAX - N_MIN + 1, N_MIN);
 
 	}
