@@ -19,6 +19,8 @@ void guardaPGMiACE (char* nombre, int pasos, int celdas, int **pixels, int pixel
 
 void guardaPLOT (char* nombre, const int *y, int valores, int xini = 1);
 
+void guardaPLOT (char* nombre, const double *y, int valores, int xini = 1, int decimales = 3);
+
 void guardarAtractorPLOT(char* nombreFichero, int** probabilidades, int pasos, int estados);
 
 #endif

@@ -24,7 +24,7 @@
  *              Se calcula la evolución de la distancia de hamming en el tiempo entre el ACE calculado 
  *				y otro que difiere únicamente en el valor central de la primera fila.
  *              Cada evolución calculada se guarda en un fichero.
- * Sintaxis: ACE <opcion1>:<valor1> <opcion2>:<valor2> ...
+ * Sintaxis: HAMMING <opcion1>:<valor1> <opcion2>:<valor2> ...
  *
  * Opción					| Valores (separados por comas)		| Valor por defecto
  * -------------------------------------------------------------------------------------------------------
@@ -45,10 +45,10 @@
  * 
  * Ejemplos:
  *
- * ACE reglas:126,90
- * ACE inicializacion:aleatoria
- * ACE reglas:todas celdas:500
- * ACE reglas:4 pasos:200 celdas:200
+ * HAMMING reglas:126,90
+ * HAMMING inicializacion:aleatoria
+ * HAMMING reglas:todas celdas:500
+ * HAMMING reglas:4 pasos:200 celdas:200
  *
  */
 int main(int argc, char** argv)
