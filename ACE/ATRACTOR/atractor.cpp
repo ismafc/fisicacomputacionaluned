@@ -141,7 +141,7 @@ int main(int argc, char** argv)
 
 		// Guardamos los resultados
 		sprintf(nombreFichero, "ATRACTOR_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
-		guardarAtractorPLOT(nombreFichero, probabilidades, pasos + 1, estadosPosibles);
+		guardarAtractorPLOT(nombreFichero, probabilidades, pasos, estadosPosibles);
 
 		sprintf(nombreFichero, "ATRACTOR_VISITADO_PASO_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
 		guardaPLOT(nombreFichero, visitadosPaso, pasos + 1);

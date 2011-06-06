@@ -105,7 +105,7 @@ void guardarAtractorPLOT(char* nombreFichero, int** probabilidades, int pasos, i
 {
 	FILE* plot;
 	plot = fopen(nombreFichero, "wb");
-	for (int p = 0; p < pasos; p++) {
+	for (int p = 0; p <= pasos; p++) {
 		for (int e = 0; e < estados; e++) {
 			if (probabilidades[p][e] != 0) 
 				fprintf(plot, "%d %d\n", e, p);
