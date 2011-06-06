@@ -126,7 +126,7 @@ int main(int argc, char** argv)
 		generarACE(ACE, reglas[nr], pasos, celdas);
 
 		// Generamos la información sobre la evolución de las distancias de Hamming
-		// entre el ACE proporcionado y un hace que difiere únicamente en el valor central del paso 0
+		// entre el ACE proporcionado y un ACE que difiere únicamente en el valor central del paso 0
 		distanciasHamming = generarHamming(ACE, reglas[nr], pasos, celdas);
 
 		// Guardamos la información en un fichero
