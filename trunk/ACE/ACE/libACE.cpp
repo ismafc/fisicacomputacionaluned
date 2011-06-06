@@ -193,22 +193,22 @@ bool regresion(const double* puntosx, const double* puntosy, int npuntos, double
 		sumy2 += (puntosy[i] * puntosy[i]);
 	}
 
+	// Calculamos el numerador
+	numeradorm = N * sumxy - sumx * sumy;
+
 	// Calculamos el denominador para 'my' (si es cero devolvemos error)
 	denominadormy = N * sumx2 - sumx * sumx;
-	if (denominadormy == 0.0)
+	if (denominadormy == 0.0 && numeradorm != 0.0)
 		return false;
 
 	// Calculamos el denominador para 'mx' (si es cero devolvemos error)
 	denominadormx = N * sumy2 - sumy * sumy;
-	if (denominadormx == 0.0)
+	if (denominadormx == 0.0 && numeradorm != 0.0)
 		return false;
 
-	// Calculamos el numerador
-	numeradorm = N * sumxy - sumx * sumy;
-
 	// Calculamos 'mx', 'my' y 'y0'
-	my = numeradorm / denominadormy;
-	mx = numeradorm / denominadormx;
+	my = (numeradorm == 0.0) ? 0.0 : numeradorm / denominadormy;
+	mx = (numeradorm == 0.0) ? 0.0 : numeradorm / denominadormx;
 	y0 = (sumy - my * sumx) / N;
 
 	// Si no podemos calcular 'r' devolvemos error
@@ -293,4 +293,70 @@ int* generarHamming(int** ACE, int regla, int pasos, int celdas)
 	liberarMemoriaACE(ACE1, pasos);
 
 	return hamming;
+}
+
+void inicializarAtractores(int*** probabilidades, int** visitados, int** estados, int pasos, int estadosPosibles)
+{
+	// Memoria para almacenar las visitas a cada estado en cada paso
+	*probabilidades = new int* [pasos + 1];
+	for (int p = 0; p < pasos + 1; p++)
+	{
+		(*probabilidades)[p] = new int [estadosPosibles];
+		memset((*probabilidades)[p], 0, estadosPosibles * sizeof(int));
+	}
+
+	// Memoria para almacenar el número de estados diferentes visitados en cada paso
+	*visitados = new int [pasos + 1];
+	memset(*visitados, 0, (pasos + 1) * sizeof(int));
+
+	// Memoria para almacenar el número de visitas a cada estado en algún paso
+	*estados = new int [estadosPosibles];
+	memset(*estados, 0, estadosPosibles * sizeof(int));
+}
+
+void liberarAtractores(int** probabilidades, int* visitados, int* estados, int pasos)
+{
+	// Liberamos cada paso que consta de un vector con las veces en que se visitó cada estado
+	for (int i = 0; i < pasos + 1; i++)
+		delete[] probabilidades[i];
+
+	// Liberamos el vector de punteros
+	delete[] probabilidades;
+
+	// Liberamos el vector de porcentaje de estados visitados para cada paso
+	delete[] visitados;
+
+	// Liberamos el vector de porcentaje de visitas a cada estado 
+	delete[] estados;
+}
+
+void generarEstadoInicial(int* base, int estado, int celdas)
+{
+	// Incializamos cada posición con su 'bit' correspondiente en 'estado'
+	for (int j = celdas - 1; j >= 0; j--)
+		base[celdas - j] = (estado >> j) & 1;
+
+	// Actualizamos las condiciones periódicas de contorno
+	base[0] = base[celdas];
+	base[celdas + 1] = base[1];
+}
+
+double entropia(int* probabilidades, int celdas)
+{
+	long estadosPosibles = (long)pow(2.0, celdas);	// Todos los estados posibles
+	double suma = 0.0;								// Iremos guardando la suma
+	double pe;										// Guardaremos la probabilidad de visitar un estado concreto
+
+	// La fórmula de la entropía consiste en realizar el sumatorio de
+	for (long e = 0; e < estadosPosibles; e++) {
+		if (probabilidades[e] == 0)
+			continue;
+		pe = (double)probabilidades[e] / (double)estadosPosibles;
+		// Sumamos la probabilidad de visitar el estado 'e' en el paso que nos ocupa multiplicada
+		// por el logaritmo en base 2 de dicha probabilidad.
+		suma += ((pe * log(pe)) / log(2.0));
+	}
+
+	// Finalmente devolvemos el sumatorio calculado multiplicado por -1/celdas
+	return -suma / (double)celdas;
 }

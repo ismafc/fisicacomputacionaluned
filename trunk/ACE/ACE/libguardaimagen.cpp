@@ -89,6 +89,18 @@ void guardaPLOT (char* nombre, const int *y, int valores, int xini)
 	fclose (plot);
 }
 
+void guardaPLOT (char* nombre, const double *y, int valores, int xini, int decimales)
+{
+	char decs[32];
+	sprintf(decs, "%%d %%.%df\n", decimales);
+	FILE* plot;
+	plot = fopen(nombre, "wb");
+	for (int i = 0; i < valores; i++) {
+		fprintf (plot, decs, i + xini, y[i]);
+	}
+	fclose (plot);
+}
+
 void guardarAtractorPLOT(char* nombreFichero, int** probabilidades, int pasos, int estados)
 {
 	FILE* plot;

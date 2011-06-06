@@ -10,7 +10,7 @@
 #define INICIALIZACION_SEMILLA		0		// Se inicializa con un '1' en la primera fila, en la columna central
 #define INICIALIZACION_ALEATORIA	1		// Se inicializa con una distribución aleatoria de '0' y '1' en la primera fila
 #define INICIALIZACION_SIMILAR		2		// Se inicializa con la primera fila similar a otra pero cambiado sólo el valor central negado
-#define INICIALIZACION_FIJA			2		// Se inicializa con la primera fila proporcionada
+#define INICIALIZACION_FIJA			3		// Se inicializa con la primera fila proporcionada
 
 /*
  * Nombre: aleatorio
@@ -166,5 +166,68 @@ bool exponenteHamming(const int* distanciasHamming, int pasos, double& eh);
  *
  */
 int* generarHamming(int** ACE, int regla, int pasos, int celdas);
+
+/*
+ * Nombre: inicializarAtractores
+ *
+ * Descripción: Asigna la memoria necesaria para guardar el número de visitas a cada estado en cada paso ('probabilidades')
+ *				a partir de las simulaciones partiendo de una serie de estados iniciales que abarca todo el espacio de fases.
+ *				También asigna memoria para guardar el porcentaje de estados diferentes visitados en cada paso a partir de la misma simulación,
+ *				es decir, en cada paso contará el número de estados diferentes visitados, dividirá por el número de estados posibles.
+ *
+ * probabilidades: Para cada paso, guardará cuantas veces se visitó cada estado posible en dicho paso.
+ * visitados: Para cada paso, guardaremos el número de estados diferentes visitados.
+ * estados: Para cada estado guardaremos las veces que ha sido visitado en cualquier paso de la simulación.
+ * pasos: Número de pasos de que constará las evoluciones de los ACEs.
+ * estadosPosibles: Número de estados posibles de los ACEs (2^celdas).
+ *
+ */
+void inicializarAtractores(int*** probabilidades, int** visitados, int** estados, int pasos, int estadosPosibles);
+
+/*
+ * Nombre: liberarAtractores
+ *
+ * Descripción: Libera la memoria asignada a la estructura que almacena las veces que se visita cada estado en cada paso.
+ *              Libera la memoria asignada a la estructura que almacena el porcentaje de estados diferentes visitados en cada paso.
+ *              Libera la memoria asignada a la estructura que almacena el porcentaje de visitas a cada estado posible.
+ *
+ * probabilidades: Para cada paso, guarda cuantas veces se visitó cada estado posible.
+ * visitados: Para cada paso, guarda el porcentaje de estados diferentes visitados.
+ * estados: Para cada estado, guarda el porcentaje de visitas del mismo respecto al total.
+ * pasos: Número de pasos de que constan las simulaciones.
+ *
+ */
+void liberarAtractores(int** probabilidades, int* visitados, int* estados, int pasos);
+
+/*
+ * Nombre: generarEstadoInicial
+ *
+ * Descripción: Genera un vector con el estado inicial 'estado' de un ACE 
+ *				con el número de celdas 'celdas'. El vector se devuelve en 'base'
+ *              que debe tener la dimensión adecuada.
+ *
+ * base: Vector en el que ponemos el estado inicial (ceros y unos)
+ * estado: Representa el estado inicial del ACE (hay que pasarlo a binario).
+ * celdas: Número de celdas del ACE.
+ *
+ */
+void generarEstadoInicial(int* base, int estado, int celdas);
+
+/*
+ * Nombre: entropia
+ *
+ * Descripción: Calcula la entropia (medida del desorden) de un paso concreto de un ACE. 
+ *              Para ello recibimos el número de visitas de cada estado en dicho paso y 
+ *				el número de celdas del ACE.
+ *
+ * probabilidades: Vector con tantas posiciones como estados posibles (2^celdas). En cada posición
+ *                 tenemos el número de visitas al estado dado en el paso concreto de la evolución del ACE.
+ * celdas: Número de celdas del ACE.
+ *
+ * Devuelve la entropía de dicho paso de evolución del ACE. 
+ * Es una valor de 0 (mínima entropía) a 1 (máxima entropía o desorden absoluto).
+ *
+ */
+double entropia(int* probabilidades, int celdas);
 
 #endif
