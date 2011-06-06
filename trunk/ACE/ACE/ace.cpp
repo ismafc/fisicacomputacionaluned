@@ -2,7 +2,7 @@
 #include "libguardaimagen.h"
 #include "libACE.h"
 
-#pragma warning ( disable: 4996 )
+#pragma warning ( disable: 4996 )			// Evita los warnings del compilador de funciones obsoletas
 
 #define REGLA						54		// regla a aplicar por defecto
 #define CELDAS						1000	// número de celdas del ACE por defecto

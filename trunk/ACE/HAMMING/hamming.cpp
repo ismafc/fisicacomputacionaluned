@@ -2,7 +2,7 @@
 #include "libguardaimagen.h"
 #include "libACE.h"
 
-#pragma warning ( disable: 4996 )
+#pragma warning ( disable: 4996 )			// Evita los warnings del compilador de funciones obsoletas
 
 #define REGLA						54		// regla a aplicar por defecto
 #define CELDAS						1000	// número de celdas del ACE por defecto
@@ -126,6 +126,7 @@ int main(int argc, char** argv)
 		generarACE(ACE, reglas[nr], pasos, celdas);
 
 		// Generamos la información sobre la evolución de las distancias de Hamming
+		// entre el ACE proporcionado y un hace que difiere únicamente en el valor central del paso 0
 		distanciasHamming = generarHamming(ACE, reglas[nr], pasos, celdas);
 
 		// Guardamos la información en un fichero
@@ -139,6 +140,7 @@ int main(int argc, char** argv)
 		else
 			printf("No se pudo calcular el exponente de hamming (R%03d,C%05d,P%05d)\n", reglas[nr], celdas, pasos, eh);
 
+		// Liberamos la memoria
 		delete[] distanciasHamming;
 	}
 

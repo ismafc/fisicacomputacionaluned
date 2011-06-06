@@ -1,8 +1,7 @@
-#include <time.h>
 #include "libguardaimagen.h"
 #include "libACE.h"
 
-#pragma warning ( disable: 4996 )
+#pragma warning ( disable: 4996 )			// Evita los warnings del compilador de funciones obsoletas
 
 #define REGLA						54		// regla a aplicar por defecto
 #define CELDAS						10		// número de celdas del ACE por defecto
@@ -26,7 +25,7 @@
  *              ya que guardaremos un entero representando un % con dos decimales de precisión (multiplicado por 100)
  *				Para cada estado, guardaremos la probabilidad de ser visitado en cualquier paso durante cualquier simulación [0..10000]
  *				ya que guardaremos un entero representando un % con dos decimales de precisión (multiplicado por 100)
- *				Para cada paso cuardaremos la entropia
+ *				Para cada paso guardaremos la entropia
  * Sintaxis: ATRACTOR <opcion1>:<valor1> <opcion2>:<valor2> ...
  *
  * Opción					| Valores (separados por comas)		| Valor por defecto
@@ -61,9 +60,6 @@ int main(int argc, char** argv)
 	int* visitadosPaso;								// Guardamos el número de estados diferentes visitados en cada paso.
 	int* estadoVisitado;							// Guardamos las veces que ha sido visitado cada estado en cualquier paso de la simulación.
 	int estadosPosibles;							// Número de estados diferentes posibles en un ACE (2^celdas)
-
-	// Inicializamos la semilla de los números aleatorios
-	srand((unsigned int)time(NULL));
 
 	// Por defecto aplicaremos la regla REGLA si como argumento no indicamos otra cosa
 	reglas[0] = REGLA;
@@ -102,18 +98,30 @@ int main(int argc, char** argv)
 	// Asignamos la memoria necesaria para almacenar un primer estado del ACE de 'celdas' celdas
 	int* base = new int [celdas + 2];
 
+	// Todos los estados posibles según el número de celdas
 	estadosPosibles = (int)pow(2.0, celdas);
 
+	// Para cada regla indicada, hacemos los cálculos
 	for (int nr = 0; nr < nreglas; nr++) {
+
+		// Asignamos memoria para las estructuras que necesitamos
 		inicializarAtractores(&probabilidades, &visitadosPaso, &estadoVisitado, pasos, estadosPosibles);
+
+		// Recorremos todos los estados posibles
 		for (int estado = 0; estado < estadosPosibles; estado++) {
+			// En 'base' ponemos el estado inicial del ACE correspondiente a 'estado'
 			generarEstadoInicial(base, estado, celdas);
 
+			// Inicializamos 'ACE' con el estado inicial 'base'
 			inicializarACE(ACE, celdas, INICIALIZACION_FIJA, base);
 
+			// Inicializamos los valores relativos al paso 0
 			probabilidades[0][estado]++;
 			visitadosPaso[0]++;
 			estadoVisitado[estado]++;
+
+			// Generamos la evolución del ACE que vamos a estudiar.
+			// Esta función devuelve la lista de estados por la que ha pasado
 			long* estados = generarACE(ACE, reglas[nr], pasos, celdas);
 
 			// probabilidades: Actualizamos las veces que cada estado es visitado en cada paso
@@ -149,7 +157,7 @@ int main(int argc, char** argv)
 		sprintf(nombreFichero, "ATRACTOR_ESTADO_VISITADO_R%03d_C%05d_P%05d.dat", reglas[nr], celdas, pasos);
 		guardaPLOT(nombreFichero, estadoVisitado, estadosPosibles);
 
-		// Evolución de la entropia en el tiempo
+		// Evolución de la entropia en el tiempo aprovechando los datos ya obtenidos de 'probabilidades'
 		double* entropias = new double [pasos + 1];
 		for (int p = 0; p < pasos + 1; p++)
 			entropias[p] = entropia(probabilidades[p], celdas);
