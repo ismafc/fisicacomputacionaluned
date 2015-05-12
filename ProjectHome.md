@@ -1,0 +1,1 @@
+Código sobre autómatas celulares elementales
